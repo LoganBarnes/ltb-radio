@@ -6,6 +6,7 @@
 // project
 #include "hackrf_info_app.hpp"
 #include "ltb/exec/app_defaults.hpp"
+#include "ltb/radio/user_config.hpp"
 #include "ltb/vlk/check.hpp"
 #include "ltb/vlk/render_pass.hpp"
 
@@ -187,6 +188,20 @@ auto RadioApp::initialize_presentation( ) -> utils::Result< RadioApp* >
     } ) );
 
     LTB_CHECK( imgui_.initialize( ) );
+
+    // Keep the window layout between runs regardless of the working directory.
+    if ( auto const config_dir = user_config_dir( ); config_dir )
+    {
+        imgui_ini_path_             = ( config_dir.value( ) / "imgui.ini" ).string( );
+        ImGui::GetIO( ).IniFilename = imgui_ini_path_.c_str( );
+    }
+    else
+    {
+        spdlog::warn(
+            "Window layout will use the default location: {}",
+            config_dir.error( ).debug_error_message( )
+        );
+    }
 
     return this;
 }
