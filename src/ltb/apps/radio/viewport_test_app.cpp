@@ -18,7 +18,7 @@ namespace
 
 auto make_cube( ) -> ColoredTriangleMesh
 {
-    // Each face has its own vertices (so it can have its own color) and is wound clockwise
+    // Each face has its own vertices (so it can have its own color) and is wound counter-clockwise
     // when viewed from outside, matching the pipeline's front face.
     struct Face
     {
@@ -55,8 +55,7 @@ auto make_cube( ) -> ColoredTriangleMesh
             );
             mesh.colors.push_back( face.color );
         }
-        // Counter-clockwise from outside (right x up == normal), so reverse for clockwise.
-        mesh.indices.insert(
+                mesh.indices.insert(
             mesh.indices.end( ),
             { first, first + 2U, first + 1U, first, first + 3U, first + 2U }
         );

@@ -120,7 +120,7 @@ auto ColoredMeshPipeline::initialize( ColoredMeshPipelineSettings const settings
                               .setPolygonMode( vk::PolygonMode::eFill )
                               .setLineWidth( 1.0F )
                               .setCullMode( vk::CullModeFlagBits::eBack )
-                              .setFrontFace( vk::FrontFace::eClockwise ),
+                              .setFrontFace( vk::FrontFace::eCounterClockwise ),
         },
     } ) );
     LTB_CHECK_VALID( 1UZ == pipeline_.descriptor_sets( ).size( ) );
