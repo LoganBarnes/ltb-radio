@@ -22,7 +22,7 @@ public:
     [[nodiscard( "Const getter" )]]
     auto name( ) const -> std::string const& override;
 
-    auto configure_gui( ) -> void override;
+    auto configure_gui( uint32 frame_index ) -> void override;
 
 private:
     std::optional< HackrfLibrary > library_ = std::nullopt;

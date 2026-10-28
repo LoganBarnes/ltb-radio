@@ -64,6 +64,7 @@ private:
     auto initialize_command_and_sync( ) -> utils::Result< RadioApp* >;
 
     auto gui_toolbar( ) -> void;
+    auto initialize_sub_apps( ) -> void;
 
     auto render( ) -> utils::Result< void >;
     auto record_render_commands( vlk::objs::FrameInfo const& frame ) -> utils::Result< void >;

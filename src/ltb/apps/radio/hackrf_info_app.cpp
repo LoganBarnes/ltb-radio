@@ -22,7 +22,7 @@ auto HackrfInfoApp::name( ) const -> std::string const&
     return app_name;
 }
 
-auto HackrfInfoApp::configure_gui( ) -> void
+auto HackrfInfoApp::configure_gui( uint32 const /*frame_index*/ ) -> void
 {
     if ( needs_refresh_ )
     {

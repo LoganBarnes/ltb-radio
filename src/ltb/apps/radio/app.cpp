@@ -5,6 +5,7 @@
 
 // project
 #include "hackrf_info_app.hpp"
+#include "viewport_test_app.hpp"
 #include "ltb/exec/app_defaults.hpp"
 #include "ltb/radio/user_config.hpp"
 #include "ltb/vlk/check.hpp"
@@ -31,6 +32,7 @@ RadioApp::RadioApp( window::GlfwContext& glfw_context, window::GlfwWindow& glfw_
     , glfw_window_( glfw_window )
 {
     sub_apps_.push_back( std::make_unique< HackrfInfoApp >( ) );
+    sub_apps_.push_back( std::make_unique< ViewportTestApp >( ) );
 }
 
 auto RadioApp::initialize( ) -> utils::Result< exec::UpdateLoopStatus >
@@ -102,9 +104,41 @@ auto RadioApp::configure_gui( ) -> void
         ImGui::ShowDemoWindow( &show_demo_window_ );
     }
 
+    this->initialize_sub_apps( );
+
+    auto const frame_index = graphics_cmd_and_sync_.frame_index( );
     for ( auto const& sub_app : sub_apps_ | std::views::filter( &SubApp::is_open ) )
     {
-        sub_app->configure_gui( );
+        sub_app->configure_gui( frame_index );
+    }
+}
+
+auto RadioApp::initialize_sub_apps( ) -> void
+{
+    auto const context = SubAppContext{
+        .gpu            = gpu_,
+        .command_pool   = graphics_cmd_and_sync_.command_pool( ),
+        .graphics_queue = graphics_and_compute_queue_,
+        .frame_count    = exec::max_frames_in_flight,
+    };
+
+    for ( auto const& sub_app : sub_apps_ )
+    {
+        if ( !sub_app->is_open || sub_app->is_initialized )
+        {
+            continue;
+        }
+        if ( auto result = sub_app->initialize( context ); !result )
+        {
+            spdlog::error(
+                "Failed to initialize '{}': {}",
+                sub_app->name( ),
+                result.error( ).debug_error_message( )
+            );
+            sub_app->is_open = false;
+            continue;
+        }
+        sub_app->is_initialized = true;
     }
 }
 
@@ -261,6 +295,11 @@ auto RadioApp::render( ) -> utils::Result< void >
 auto RadioApp::record_render_commands( vlk::objs::FrameInfo const& frame ) -> utils::Result< void >
 {
     VK_CHECK( frame.command_buffer.begin( vk::CommandBufferBeginInfo{ } ) );
+
+    for ( auto const& sub_app : sub_apps_ | std::views::filter( &SubApp::is_open ) )
+    {
+        LTB_CHECK( sub_app->record_commands( frame ) );
+    }
 
     LTB_CHECK( presentation_.begin_render_pass( {
         .command_buffer    = frame.command_buffer,
