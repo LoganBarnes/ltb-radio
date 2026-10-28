@@ -23,3 +23,4 @@ function(ltb_make_app directory)
 endfunction()
 
 ltb_make_app(lesson1)
+ltb_make_app(radio)
