@@ -18,6 +18,12 @@
 
 namespace ltb::radio
 {
+namespace
+{
+
+constexpr auto default_time_step = utils::duration_seconds( 1.0 / 60.0 );
+
+}
 
 RadioApp::RadioApp( window::GlfwContext& glfw_context, window::GlfwWindow& glfw_window )
     : glfw_context_( glfw_context )
@@ -38,7 +44,7 @@ auto RadioApp::initialize( ) -> utils::Result< exec::UpdateLoopStatus >
     }
 
     return exec::UpdateLoopStatus{
-        .update_time_step = utils::duration_seconds( 0.025F ),
+        .update_time_step = default_time_step,
     };
 }
 
@@ -52,7 +58,7 @@ auto RadioApp::fixed_step_update( exec::UpdateLoopStatus const& status ) -> exec
     return {
         .pause_updates    = false,
         .exit_update_loop = status.requests.exit_update_loop || exit_requested_,
-        .update_time_step = utils::duration_seconds( 0.025F ),
+        .update_time_step = status.update_time_step,
     };
 }
 
@@ -69,7 +75,7 @@ auto RadioApp::frame_update( exec::UpdateLoopStatus const& status ) -> exec::Upd
     return {
         .pause_updates    = false,
         .exit_update_loop = status.requests.exit_update_loop || exit_requested_,
-        .update_time_step = utils::duration_seconds( 0.025F ),
+        .update_time_step = status.update_time_step,
     };
 }
 
@@ -95,7 +101,7 @@ auto RadioApp::configure_gui( ) -> void
         ImGui::ShowDemoWindow( &show_demo_window_ );
     }
 
-    for ( auto& sub_app : sub_apps_ | std::views::filter( &SubApp::is_open ) )
+    for ( auto const& sub_app : sub_apps_ | std::views::filter( &SubApp::is_open ) )
     {
         sub_app->configure_gui( );
     }
@@ -123,7 +129,7 @@ auto RadioApp::gui_toolbar( ) -> void
         {
             ImGui::MenuItem( "(none)", nullptr, false, false );
         }
-        for ( auto& sub_app : sub_apps_ )
+        for ( auto const& sub_app : sub_apps_ )
         {
             ImGui::MenuItem( sub_app->name( ).c_str( ), nullptr, &sub_app->is_open );
         }
