@@ -4,6 +4,7 @@
 #include "app.hpp"
 
 // project
+#include "hackrf_info_app.hpp"
 #include "ltb/exec/app_defaults.hpp"
 #include "ltb/vlk/check.hpp"
 #include "ltb/vlk/render_pass.hpp"
@@ -22,6 +23,7 @@ RadioApp::RadioApp( window::GlfwContext& glfw_context, window::GlfwWindow& glfw_
     : glfw_context_( glfw_context )
     , glfw_window_( glfw_window )
 {
+    sub_apps_.push_back( std::make_unique< HackrfInfoApp >( ) );
 }
 
 auto RadioApp::initialize( ) -> utils::Result< exec::UpdateLoopStatus >
