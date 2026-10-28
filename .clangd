@@ -20,3 +20,4 @@ CompileFlags:
     - -Wstrict-aliasing
     - -Wcast-align
     - -Werror=implicit-function-declaration
+    - -Wno-c2y-extensions
