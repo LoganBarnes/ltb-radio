@@ -4,6 +4,7 @@
 #pragma once
 
 // project
+#include "sub_app.hpp"
 #include "ltb/exec/update_loop.hpp"
 #include "ltb/gui/imgui_glfw_vulkan_setup.hpp"
 #include "ltb/vlk/objs/vulkan_command_and_sync.hpp"
@@ -12,26 +13,10 @@
 
 // standard
 #include <memory>
-#include <string>
 #include <vector>
 
 namespace ltb::radio
 {
-
-// A sub application that is launched from the toolbar's "Apps" menu and draws its own
-// (dockable) ImGui windows while open.
-class SubApp
-{
-public:
-    virtual ~SubApp( ) = default;
-
-    [[nodiscard( "Const getter" )]]
-    virtual auto name( ) const -> std::string const& = 0;
-
-    virtual auto configure_gui( ) -> void = 0;
-
-    bool is_open = false;
-};
 
 class RadioApp
 {
