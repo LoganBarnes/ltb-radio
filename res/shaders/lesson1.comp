@@ -1,0 +1,49 @@
+#version 450
+
+layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(std430, binding = 0) readonly buffer FluidSsboIn
+{
+    float fluid_in[];
+};
+
+layout(std430, binding = 1) buffer FluidSsboOut
+{
+    float fluid_out[];
+};
+
+layout (binding = 2) uniform ParameterUbo
+{
+    uint  fluid_count;
+    float time_step;
+    float cell_size;
+    float wave_speed;
+} ubo;
+
+uint wrapped_offset_index(uint index, int offset)
+{
+    uint shifted_offset = uint(int(ubo.fluid_count) + offset);
+    return (index + shifted_offset) % ubo.fluid_count;
+}
+
+void main()
+{
+    uint index = gl_GlobalInvocationID.x;
+
+    if (index > ubo.fluid_count)
+    {
+        return;
+    }
+
+    uint prev_index = wrapped_offset_index(index, -1);
+
+    float prev_value = fluid_in[prev_index];
+    float curr_value = fluid_in[index];
+
+    float delta = curr_value - prev_value;
+    float scale = ubo.wave_speed * (ubo.time_step / ubo.cell_size);
+
+    float next_value = curr_value - (scale * delta);
+
+    fluid_out[index] = next_value;
+}

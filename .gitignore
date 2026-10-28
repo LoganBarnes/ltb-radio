@@ -1,0 +1,16 @@
+# System/tool-specific ignores
+.directory
+.DS_Store
+*~
+
+# Docs
+docs/_build/
+docs/_api/
+docs/_doxygen/
+
+# IDEs
+.idea
+.vscode
+
+# Python
+__pycache__/

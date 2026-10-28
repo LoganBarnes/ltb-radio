@@ -1,0 +1,3 @@
+[submodule "ltb-vlk"]
+	path = ltb-vlk
+	url = git@github.com:LoganBarnes/ltb-vlk.git
