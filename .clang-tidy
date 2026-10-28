@@ -14,5 +14,4 @@ CheckOptions:
   - { key: google-readability-namespace-comments.SpacesBeforeComments,      value: '2'   }
   - { key: modernize-use-nullptr.NullMacros,        value: 'NULL'     }
 WarningsAsErrors: true,true
-AnalyzeTemporaryDtors: false
 ...

@@ -1,0 +1,22 @@
+CompileFlags:
+  Add:
+    - -Wall
+    - -Wextra
+    - -Werror
+    - -Wpedantic
+    - -pedantic-errors
+    - -Wunused
+    - -Winit-self
+    - -Wuninitialized
+    - -Wunused-label
+    - -Wunused-lambda-capture
+    - -Wold-style-cast
+    - -Woverloaded-virtual
+    - -Wsign-conversion
+    - -Wshadow
+    - -Wmissing-declarations
+    - -Wmissing-include-dirs
+    - -Wimplicit-float-conversion
+    - -Wstrict-aliasing
+    - -Wcast-align
+    - -Werror=implicit-function-declaration
