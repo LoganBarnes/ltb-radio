@@ -4,7 +4,7 @@
 #pragma once
 
 // project
-#include "sub_app.hpp"
+#include "ltb/apps/radio/app_view.hpp"
 #include "ltb/radio/colored_mesh_pipeline.hpp"
 #include "ltb/radio/imgui_viewport.hpp"
 #include "ltb/radio/pan_zoom_camera_2d.hpp"
@@ -18,7 +18,7 @@ namespace ltb::radio
 
 // Renders a grid, a waveform and some shapes in a docked ImGui window to test 2D viewport
 // resizing, panning (left/middle drag) and zooming (mouse wheel).
-class ViewportTest2dApp : public SubApp
+class Viewport2dView : public AppView
 {
 public:
     [[nodiscard( "Const getter" )]]

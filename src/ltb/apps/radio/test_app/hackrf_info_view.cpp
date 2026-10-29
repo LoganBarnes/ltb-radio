@@ -1,7 +1,7 @@
 // ///////////////////////////////////////////////////////////////////////////////////////
 // A Logan Thomas Barnes project
 // ///////////////////////////////////////////////////////////////////////////////////////
-#include "hackrf_info_app.hpp"
+#include "hackrf_info_view.hpp"
 
 // project
 #include "ltb/gui/imgui_utils.hpp"
@@ -16,13 +16,13 @@
 namespace ltb::radio
 {
 
-auto HackrfInfoApp::name( ) const -> std::string const&
+auto HackrfInfoView::name( ) const -> std::string const&
 {
-    static auto const app_name = std::string{ "HackRF Info" };
-    return app_name;
+    static auto const view_name = std::string{ "HackRF Info" };
+    return view_name;
 }
 
-auto HackrfInfoApp::configure_gui( uint32 const /*frame_index*/ ) -> void
+auto HackrfInfoView::configure_gui( uint32 const /*frame_index*/ ) -> void
 {
     if ( needs_refresh_ )
     {
@@ -75,7 +75,7 @@ auto HackrfInfoApp::configure_gui( uint32 const /*frame_index*/ ) -> void
     ImGui::End( );
 }
 
-auto HackrfInfoApp::refresh( ) -> void
+auto HackrfInfoView::refresh( ) -> void
 {
     needs_refresh_ = false;
     error_message_.clear( );
@@ -119,7 +119,7 @@ auto HackrfInfoApp::refresh( ) -> void
     );
 }
 
-auto HackrfInfoApp::select( std::size_t const index ) -> void
+auto HackrfInfoView::select( std::size_t const index ) -> void
 {
     selected_index_ = index;
     details_.reset( );

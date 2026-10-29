@@ -1,7 +1,7 @@
 // ///////////////////////////////////////////////////////////////////////////////////////
 // A Logan Thomas Barnes project
 // ///////////////////////////////////////////////////////////////////////////////////////
-#include "viewport_test_2d_app.hpp"
+#include "viewport_2d_view.hpp"
 
 // project
 #include "ltb/gui/imgui_utils.hpp"
@@ -110,13 +110,13 @@ auto make_quads( ) -> ColoredMesh
 
 } // namespace
 
-auto ViewportTest2dApp::name( ) const -> std::string const&
+auto Viewport2dView::name( ) const -> std::string const&
 {
-    static auto const app_name = std::string( "Viewport Test 2D" );
-    return app_name;
+    static auto const view_name = std::string( "2D Viewport" );
+    return view_name;
 }
 
-auto ViewportTest2dApp::initialize( SubAppContext const& context ) -> utils::Result< void >
+auto Viewport2dView::initialize( SubAppContext const& context ) -> utils::Result< void >
 {
     viewport_ = std::make_unique< ImguiViewport >( context.gpu );
     LTB_CHECK( viewport_->initialize( { .frame_count = context.frame_count } ) );
@@ -142,10 +142,10 @@ auto ViewportTest2dApp::initialize( SubAppContext const& context ) -> utils::Res
     return utils::success( );
 }
 
-auto ViewportTest2dApp::configure_gui( uint32 const frame_index ) -> void
+auto Viewport2dView::configure_gui( uint32 const frame_index ) -> void
 {
     ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 0.0F, 0.0F ) );
-    auto const window_open = ImGui::Begin( "Viewport Test 2D", &is_open );
+    auto const window_open = ImGui::Begin( "2D Viewport", &is_open );
     ImGui::PopStyleVar( );
 
     if ( window_open )
@@ -183,8 +183,7 @@ auto ViewportTest2dApp::configure_gui( uint32 const frame_index ) -> void
     }
 }
 
-auto ViewportTest2dApp::record_commands( vlk::objs::FrameInfo const& frame )
-    -> utils::Result< void >
+auto Viewport2dView::record_commands( vlk::objs::FrameInfo const& frame ) -> utils::Result< void >
 {
     LTB_CHECK( viewport_->begin_render_pass( frame ) );
     LTB_CHECK( triangles_->draw( frame ) );
@@ -194,7 +193,7 @@ auto ViewportTest2dApp::record_commands( vlk::objs::FrameInfo const& frame )
     return utils::success( );
 }
 
-auto ViewportTest2dApp::handle_input( ) -> void
+auto Viewport2dView::handle_input( ) -> void
 {
     auto const& io = ImGui::GetIO( );
 

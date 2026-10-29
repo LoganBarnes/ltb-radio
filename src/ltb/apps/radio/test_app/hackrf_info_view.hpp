@@ -4,7 +4,7 @@
 #pragma once
 
 // project
-#include "sub_app.hpp"
+#include "ltb/apps/radio/app_view.hpp"
 #include "ltb/radio/hackrf_info.hpp"
 
 // standard
@@ -16,7 +16,7 @@ namespace ltb::radio
 {
 
 // Lists connected HackRF devices and shows details of the selected one.
-class HackrfInfoApp : public SubApp
+class HackrfInfoView : public AppView
 {
 public:
     [[nodiscard( "Const getter" )]]

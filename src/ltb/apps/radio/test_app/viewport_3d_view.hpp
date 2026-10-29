@@ -4,7 +4,7 @@
 #pragma once
 
 // project
-#include "sub_app.hpp"
+#include "ltb/apps/radio/app_view.hpp"
 #include "ltb/radio/colored_mesh_pipeline.hpp"
 #include "ltb/radio/imgui_viewport.hpp"
 #include "ltb/radio/orbit_camera.hpp"
@@ -18,7 +18,7 @@ namespace ltb::radio
 
 // Renders a cube into a docked ImGui window to test viewport resizing and camera updates.
 // Left-drag orbits the camera and the mouse wheel zooms.
-class ViewportTestApp : public SubApp
+class Viewport3dView : public AppView
 {
 public:
     [[nodiscard( "Const getter" )]]

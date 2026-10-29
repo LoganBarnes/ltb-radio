@@ -13,6 +13,7 @@
 
 // standard
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -49,7 +50,21 @@ private:
     gui::ImguiGlfwVulkanSetup       imgui_                 = { glfw_window_, gpu_, presentation_ };
     vlk::objs::VulkanCommandAndSync graphics_cmd_and_sync_ = { gpu_ };
 
-    std::vector< std::unique_ptr< SubApp > > sub_apps_ = { };
+    using SubAppFactory = std::unique_ptr< SubApp > ( * )( SubAppContext const& );
+
+    struct SubAppEntry
+    {
+        std::string   name;
+        SubAppFactory create;
+    };
+
+    std::vector< SubAppEntry >   sub_app_entries_ = { };
+    std::unique_ptr< SubApp >    active_app_      = nullptr;
+    std::optional< std::size_t > active_index_    = std::nullopt;
+
+    // Set by the Apps menu and applied at the start of the next frame, before any GUI is built.
+    std::optional< std::size_t > requested_index_  = std::nullopt;
+    bool                         change_requested_ = false;
 
     // ImGui stores a pointer to this path, so it must outlive the ImGui context.
     std::string imgui_ini_path_ = { };
@@ -57,14 +72,13 @@ private:
     bool initialized_      = false;
     bool exit_requested_   = false;
     bool show_main_window_ = true;
-    bool show_demo_window_ = false;
 
     auto initialize_gpu( ) -> utils::Result< RadioApp* >;
     auto initialize_presentation( ) -> utils::Result< RadioApp* >;
     auto initialize_command_and_sync( ) -> utils::Result< RadioApp* >;
 
     auto gui_toolbar( ) -> void;
-    auto initialize_sub_apps( ) -> void;
+    auto apply_app_change( ) -> utils::Result< void >;
 
     auto render( ) -> utils::Result< void >;
     auto record_render_commands( vlk::objs::FrameInfo const& frame ) -> utils::Result< void >;

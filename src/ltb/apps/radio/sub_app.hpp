@@ -4,56 +4,48 @@
 #pragma once
 
 // project
-#include "ltb/utils/result.hpp"
-#include "ltb/utils/types.hpp"
-#include "ltb/vlk/command_pool.hpp"
-#include "ltb/vlk/objs/frame_info.hpp"
-#include "ltb/vlk/objs/vulkan_gpu.hpp"
+#include "app_view.hpp"
+#include "sub_app_context.hpp"
 
 // standard
+#include <memory>
 #include <string>
+#include <vector>
 
 namespace ltb::radio
 {
 
-// Vulkan objects owned by the main app that sub applications can use.
-struct SubAppContext
-{
-    vlk::objs::VulkanGpu& gpu;
-    vlk::CommandPool&     command_pool;
-    vk::Queue             graphics_queue = nullptr;
-    uint32                frame_count    = 0U;
-};
-
-// A sub application that is launched from the toolbar's "Apps" menu and draws its own
-// (dockable) ImGui windows while open.
+// A full-featured application (e.g. a tuner) selected from the toolbar's "Apps" menu.
+// Only one runs at a time. Its views are listed in the "View" menu while it runs.
 class SubApp
 {
 public:
+    explicit SubApp( SubAppContext const& context );
     virtual ~SubApp( ) = default;
+
+    SubApp( SubApp const& )                    = delete;
+    auto operator=( SubApp const& ) -> SubApp& = delete;
+    SubApp( SubApp&& )                         = delete;
+    auto operator=( SubApp&& ) -> SubApp&      = delete;
 
     [[nodiscard( "Const getter" )]]
     virtual auto name( ) const -> std::string const& = 0;
 
-    // Called once, the first time the app is opened. A failure closes the app.
-    virtual auto initialize( SubAppContext const& context ) -> utils::Result< void >
-    {
-        utils::ignore( context );
-        return utils::success( );
-    }
+    // Draws a menu item for each view. Call between BeginMenu and EndMenu.
+    auto gui_view_menu_items( ) -> void;
 
-    // `frame_index` is the frame in flight that will be recorded after this GUI is built.
-    virtual auto configure_gui( uint32 frame_index ) -> void = 0;
+    // Initializes newly opened views and draws all open views.
+    auto configure_gui( uint32 frame_index ) -> void;
 
-    // Called while the frame's command buffer is recording, before the main render pass begins.
-    virtual auto record_commands( vlk::objs::FrameInfo const& frame ) -> utils::Result< void >
-    {
-        utils::ignore( frame );
-        return utils::success( );
-    }
+    auto record_commands( vlk::objs::FrameInfo const& frame ) -> utils::Result< void >;
 
-    bool is_open        = false;
-    bool is_initialized = false;
+protected:
+    auto add_view( std::unique_ptr< AppView > view ) -> void;
+
+private:
+    SubAppContext context_;
+
+    std::vector< std::unique_ptr< AppView > > views_ = { };
 };
 
 } // namespace ltb::radio

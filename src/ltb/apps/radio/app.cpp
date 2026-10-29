@@ -4,20 +4,15 @@
 #include "app.hpp"
 
 // project
-#include "hackrf_info_app.hpp"
-#include "viewport_test_2d_app.hpp"
-#include "viewport_test_app.hpp"
 #include "ltb/exec/app_defaults.hpp"
 #include "ltb/radio/user_config.hpp"
 #include "ltb/vlk/check.hpp"
 #include "ltb/vlk/render_pass.hpp"
+#include "test_app/test_app.hpp"
 
 // external
 #include <imgui.h>
 #include <spdlog/spdlog.h>
-
-// standard
-#include <ranges>
 
 namespace ltb::radio
 {
@@ -26,15 +21,19 @@ namespace
 
 constexpr auto default_time_step = utils::duration_seconds( 1.0 / 60.0 );
 
+template < typename App >
+auto make_sub_app( SubAppContext const& context ) -> std::unique_ptr< SubApp >
+{
+    return std::make_unique< App >( context );
 }
+
+} // namespace
 
 RadioApp::RadioApp( window::GlfwContext& glfw_context, window::GlfwWindow& glfw_window )
     : glfw_context_( glfw_context )
     , glfw_window_( glfw_window )
 {
-    sub_apps_.push_back( std::make_unique< HackrfInfoApp >( ) );
-    sub_apps_.push_back( std::make_unique< ViewportTestApp >( ) );
-    sub_apps_.push_back( std::make_unique< ViewportTest2dApp >( ) );
+    sub_app_entries_.push_back( { .name = "Test App", .create = &make_sub_app< TestApp > } );
 }
 
 auto RadioApp::initialize( ) -> utils::Result< exec::UpdateLoopStatus >
@@ -69,6 +68,11 @@ auto RadioApp::fixed_step_update( exec::UpdateLoopStatus const& status ) -> exec
 
 auto RadioApp::frame_update( exec::UpdateLoopStatus const& status ) -> exec::UpdateRequests
 {
+    if ( auto result = this->apply_app_change( ); !result )
+    {
+        spdlog::error( "Switching apps failed: {}", result.error( ).debug_error_message( ) );
+    }
+
     imgui_.new_frame( );
     this->configure_gui( );
 
@@ -94,54 +98,48 @@ auto RadioApp::configure_gui( ) -> void
 
     if ( show_main_window_ && ImGui::Begin( "Radio", &show_main_window_ ) )
     {
-        ImGui::TextUnformatted( "Select a sub application from the Apps menu." );
+        ImGui::TextUnformatted( "Select an application from the Apps menu." );
     }
     if ( show_main_window_ )
     {
         ImGui::End( );
     }
 
-    if ( show_demo_window_ )
+    if ( active_app_ )
     {
-        ImGui::ShowDemoWindow( &show_demo_window_ );
-    }
-
-    this->initialize_sub_apps( );
-
-    auto const frame_index = graphics_cmd_and_sync_.frame_index( );
-    for ( auto const& sub_app : sub_apps_ | std::views::filter( &SubApp::is_open ) )
-    {
-        sub_app->configure_gui( frame_index );
+        active_app_->configure_gui( graphics_cmd_and_sync_.frame_index( ) );
     }
 }
 
-auto RadioApp::initialize_sub_apps( ) -> void
+auto RadioApp::apply_app_change( ) -> utils::Result< void >
 {
-    auto const context = SubAppContext{
-        .gpu            = gpu_,
-        .command_pool   = graphics_cmd_and_sync_.command_pool( ),
-        .graphics_queue = graphics_and_compute_queue_,
-        .frame_count    = exec::max_frames_in_flight,
-    };
-
-    for ( auto const& sub_app : sub_apps_ )
+    if ( !change_requested_ )
     {
-        if ( !sub_app->is_open || sub_app->is_initialized )
-        {
-            continue;
-        }
-        if ( auto result = sub_app->initialize( context ); !result )
-        {
-            spdlog::error(
-                "Failed to initialize '{}': {}",
-                sub_app->name( ),
-                result.error( ).debug_error_message( )
-            );
-            sub_app->is_open = false;
-            continue;
-        }
-        sub_app->is_initialized = true;
+        return utils::success( );
     }
+    change_requested_ = false;
+
+    // The previous app's resources may still be in use by frames in flight.
+    VK_CHECK( gpu_.device( ).get( ).waitIdle( ) );
+    active_app_.reset( );
+    active_index_ = std::nullopt;
+
+    if ( requested_index_.has_value( ) )
+    {
+        LTB_CHECK_VALID( *requested_index_ < sub_app_entries_.size( ) );
+
+        active_app_ = sub_app_entries_[ *requested_index_ ].create(
+            SubAppContext{
+                .gpu            = gpu_,
+                .command_pool   = graphics_cmd_and_sync_.command_pool( ),
+                .graphics_queue = graphics_and_compute_queue_,
+                .frame_count    = exec::max_frames_in_flight,
+            }
+        );
+        active_index_ = requested_index_;
+    }
+
+    return utils::success( );
 }
 
 auto RadioApp::gui_toolbar( ) -> void
@@ -162,13 +160,19 @@ auto RadioApp::gui_toolbar( ) -> void
 
     if ( ImGui::BeginMenu( "Apps" ) )
     {
-        if ( sub_apps_.empty( ) )
+        if ( sub_app_entries_.empty( ) )
         {
             ImGui::MenuItem( "(none)", nullptr, false, false );
         }
-        for ( auto const& sub_app : sub_apps_ )
+        for ( auto i = 0UZ; i < sub_app_entries_.size( ); ++i )
         {
-            ImGui::MenuItem( sub_app->name( ).c_str( ), nullptr, &sub_app->is_open );
+            auto const is_active = active_index_ == i;
+            if ( ImGui::MenuItem( sub_app_entries_[ i ].name.c_str( ), nullptr, is_active ) )
+            {
+                // Selecting the running app closes it.
+                requested_index_  = is_active ? std::nullopt : std::optional( i );
+                change_requested_ = true;
+            }
         }
         ImGui::EndMenu( );
     }
@@ -176,7 +180,11 @@ auto RadioApp::gui_toolbar( ) -> void
     if ( ImGui::BeginMenu( "View" ) )
     {
         ImGui::MenuItem( "Radio", nullptr, &show_main_window_ );
-        ImGui::MenuItem( "ImGui Demo", nullptr, &show_demo_window_ );
+        if ( active_app_ )
+        {
+            ImGui::Separator( );
+            active_app_->gui_view_menu_items( );
+        }
         ImGui::EndMenu( );
     }
 
@@ -193,6 +201,7 @@ auto RadioApp::on_resize( glm::ivec2 const /*size*/ ) -> utils::Result< void >
 auto RadioApp::clean_up( ) -> utils::Result< void >
 {
     VK_CHECK( gpu_.device( ).get( ).waitIdle( ) );
+    active_app_.reset( );
 
     return utils::success( );
 }
@@ -298,9 +307,9 @@ auto RadioApp::record_render_commands( vlk::objs::FrameInfo const& frame ) -> ut
 {
     VK_CHECK( frame.command_buffer.begin( vk::CommandBufferBeginInfo{ } ) );
 
-    for ( auto const& sub_app : sub_apps_ | std::views::filter( &SubApp::is_open ) )
+    if ( active_app_ )
     {
-        LTB_CHECK( sub_app->record_commands( frame ) );
+        LTB_CHECK( active_app_->record_commands( frame ) );
     }
 
     LTB_CHECK( presentation_.begin_render_pass( {

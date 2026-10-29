@@ -1,7 +1,7 @@
 // ///////////////////////////////////////////////////////////////////////////////////////
 // A Logan Thomas Barnes project
 // ///////////////////////////////////////////////////////////////////////////////////////
-#include "viewport_test_app.hpp"
+#include "viewport_3d_view.hpp"
 
 // project
 #include "ltb/gui/imgui_utils.hpp"
@@ -65,13 +65,13 @@ auto make_cube( ) -> ColoredMesh
 
 } // namespace
 
-auto ViewportTestApp::name( ) const -> std::string const&
+auto Viewport3dView::name( ) const -> std::string const&
 {
-    static auto const app_name = std::string( "Viewport Test" );
-    return app_name;
+    static auto const view_name = std::string( "3D Viewport" );
+    return view_name;
 }
 
-auto ViewportTestApp::initialize( SubAppContext const& context ) -> utils::Result< void >
+auto Viewport3dView::initialize( SubAppContext const& context ) -> utils::Result< void >
 {
     viewport_ = std::make_unique< ImguiViewport >( context.gpu );
     LTB_CHECK( viewport_->initialize( { .frame_count = context.frame_count } ) );
@@ -85,10 +85,10 @@ auto ViewportTestApp::initialize( SubAppContext const& context ) -> utils::Resul
     return utils::success( );
 }
 
-auto ViewportTestApp::configure_gui( uint32 const frame_index ) -> void
+auto Viewport3dView::configure_gui( uint32 const frame_index ) -> void
 {
     ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 0.0F, 0.0F ) );
-    auto const window_open = ImGui::Begin( "Viewport Test", &is_open );
+    auto const window_open = ImGui::Begin( "3D Viewport", &is_open );
     ImGui::PopStyleVar( );
 
     if ( window_open )
@@ -125,7 +125,7 @@ auto ViewportTestApp::configure_gui( uint32 const frame_index ) -> void
     }
 }
 
-auto ViewportTestApp::record_commands( vlk::objs::FrameInfo const& frame ) -> utils::Result< void >
+auto Viewport3dView::record_commands( vlk::objs::FrameInfo const& frame ) -> utils::Result< void >
 {
     LTB_CHECK( viewport_->begin_render_pass( frame ) );
     LTB_CHECK( cube_->draw( frame ) );
@@ -134,7 +134,7 @@ auto ViewportTestApp::record_commands( vlk::objs::FrameInfo const& frame ) -> ut
     return utils::success( );
 }
 
-auto ViewportTestApp::handle_input( ) -> void
+auto Viewport3dView::handle_input( ) -> void
 {
     auto const& io = ImGui::GetIO( );
 
