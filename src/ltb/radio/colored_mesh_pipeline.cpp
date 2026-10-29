@@ -115,7 +115,7 @@ auto ColoredMeshPipeline::initialize( ColoredMeshPipelineSettings const settings
         .pipeline = {
             .vertex_bindings    = std::move( vertex_bindings ),
             .vertex_attributes  = std::move( vertex_attributes ),
-            .primitive_topology = vk::PrimitiveTopology::eTriangleList,
+            .primitive_topology = settings.topology,
             .rasterizer         = vk::PipelineRasterizationStateCreateInfo{ }
                               .setPolygonMode( vk::PolygonMode::eFill )
                               .setLineWidth( 1.0F )
@@ -160,9 +160,9 @@ auto ColoredMeshPipeline::is_initialized( ) const -> bool
 }
 
 auto ColoredMeshPipeline::initialize_mesh(
-    ColoredTriangleMesh const& mesh,
-    vlk::CommandPool&          command_pool,
-    vk::Queue const&           queue
+    ColoredMesh const& mesh,
+    vlk::CommandPool&  command_pool,
+    vk::Queue const&   queue
 ) -> utils::Result< MeshPushConstants* >
 {
     LTB_CHECK_VALID( command_pool.is_initialized( ) );

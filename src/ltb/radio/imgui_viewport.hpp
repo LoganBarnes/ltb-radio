@@ -67,6 +67,12 @@ public:
     [[nodiscard( "Const getter" )]]
     auto extent( ) const -> vk::Extent2D;
 
+    // Size of the displayed image in ImGui (logical) units, and its top-left screen position.
+    [[nodiscard( "Const getter" )]]
+    auto logical_size( ) const -> glm::vec2;
+    [[nodiscard( "Const getter" )]]
+    auto logical_origin( ) const -> glm::vec2;
+
     // The mouse is over the viewport image (and not blocked by another window).
     [[nodiscard( "Const getter" )]]
     auto is_hovered( ) const -> bool;
@@ -101,6 +107,9 @@ private:
     vk::UniqueSampler     sampler_     = { };
 
     std::vector< std::unique_ptr< Target > > targets_ = { };
+
+    glm::vec2 logical_size_   = { };
+    glm::vec2 logical_origin_ = { };
 
     bool hovered_ = false;
     bool active_  = false;

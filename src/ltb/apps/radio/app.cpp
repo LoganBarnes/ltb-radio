@@ -5,6 +5,7 @@
 
 // project
 #include "hackrf_info_app.hpp"
+#include "viewport_test_2d_app.hpp"
 #include "viewport_test_app.hpp"
 #include "ltb/exec/app_defaults.hpp"
 #include "ltb/radio/user_config.hpp"
@@ -33,6 +34,7 @@ RadioApp::RadioApp( window::GlfwContext& glfw_context, window::GlfwWindow& glfw_
 {
     sub_apps_.push_back( std::make_unique< HackrfInfoApp >( ) );
     sub_apps_.push_back( std::make_unique< ViewportTestApp >( ) );
+    sub_apps_.push_back( std::make_unique< ViewportTest2dApp >( ) );
 }
 
 auto RadioApp::initialize( ) -> utils::Result< exec::UpdateLoopStatus >

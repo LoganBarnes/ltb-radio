@@ -21,17 +21,18 @@ namespace ltb::radio
 
 struct ColoredMeshPipelineSettings
 {
-    uint32 frame_count = 0U;
+    uint32                frame_count = 0U;
+    vk::PrimitiveTopology topology    = vk::PrimitiveTopology::eTriangleList;
 };
 
-struct ColoredTriangleMesh
+struct ColoredMesh
 {
     std::vector< glm::vec3 > positions = { };
     std::vector< glm::vec3 > colors    = { };
     std::vector< uint32 >    indices   = { };
 };
 
-// Draws indexed triangle meshes with per-vertex colors. The pipeline is compatible with
+// Draws indexed meshes (triangles or lines) with per-vertex colors. The pipeline is compatible with
 // `render_pass` and expects the camera uniforms to be updated for each frame.
 class ColoredMeshPipeline
 {
@@ -50,9 +51,9 @@ public:
 
     // Returns a pointer to the mesh's push constants (valid for the life of the pipeline).
     auto initialize_mesh(
-        ColoredTriangleMesh const& mesh,
-        vlk::CommandPool&          command_pool,
-        vk::Queue const&           queue
+        ColoredMesh const& mesh,
+        vlk::CommandPool&  command_pool,
+        vk::Queue const&   queue
     ) -> utils::Result< MeshPushConstants* >;
 
     auto set_camera( uint32 frame_index, cam::CameraRenderParams const& camera )

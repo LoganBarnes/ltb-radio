@@ -107,6 +107,9 @@ auto ImguiViewport::show( uint32 const frame_index ) -> utils::Result< void >
 
     auto const cursor_pos = ImGui::GetCursorScreenPos( );
 
+    logical_size_   = { available.x, available.y };
+    logical_origin_ = { cursor_pos.x, cursor_pos.y };
+
     ImGui::Image(
         ImTextureRef(
             reinterpret_cast< ImTextureID >(
@@ -177,6 +180,16 @@ auto ImguiViewport::end_render_pass( vlk::objs::FrameInfo const& frame ) -> void
 auto ImguiViewport::extent( ) const -> vk::Extent2D
 {
     return extent_;
+}
+
+auto ImguiViewport::logical_size( ) const -> glm::vec2
+{
+    return logical_size_;
+}
+
+auto ImguiViewport::logical_origin( ) const -> glm::vec2
+{
+    return logical_origin_;
 }
 
 auto ImguiViewport::is_hovered( ) const -> bool

@@ -16,7 +16,7 @@ namespace ltb::radio
 namespace
 {
 
-auto make_cube( ) -> ColoredTriangleMesh
+auto make_cube( ) -> ColoredMesh
 {
     // Each face has its own vertices (so it can have its own color) and is wound counter-clockwise
     // when viewed from outside, matching the pipeline's front face.
@@ -37,7 +37,7 @@ auto make_cube( ) -> ColoredTriangleMesh
         Face{ { 0, -1, 0 }, { 1, 0, 0 }, { 0, 0, 1 }, { 0.9F, 0.9F, 0.2F } },
     };
 
-    auto mesh = ColoredTriangleMesh{ };
+    auto mesh = ColoredMesh{ };
     for ( auto const& face : faces )
     {
         auto const first = static_cast< uint32 >( mesh.positions.size( ) );
@@ -55,7 +55,7 @@ auto make_cube( ) -> ColoredTriangleMesh
             );
             mesh.colors.push_back( face.color );
         }
-                mesh.indices.insert(
+        mesh.indices.insert(
             mesh.indices.end( ),
             { first, first + 2U, first + 1U, first, first + 3U, first + 2U }
         );
