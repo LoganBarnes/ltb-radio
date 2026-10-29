@@ -4,11 +4,11 @@
 #include "app.hpp"
 
 // project
+#include "hackrf_app/hackrf_app.hpp"
 #include "ltb/exec/app_defaults.hpp"
 #include "ltb/radio/user_config.hpp"
 #include "ltb/vlk/check.hpp"
 #include "ltb/vlk/render_pass.hpp"
-#include "hackrf_app/hackrf_app.hpp"
 #include "test_app/test_app.hpp"
 
 // external

@@ -53,7 +53,7 @@ auto write_all( ImGuiContext*, ImGuiSettingsHandler* handler, ImGuiTextBuffer* b
 
 auto register_view_settings_handler( AppViewStates& states ) -> void
 {
-    auto handler        = ImGuiSettingsHandler( );
+    auto handler       = ImGuiSettingsHandler( );
     handler.TypeName   = type_name;
     handler.TypeHash   = ImHashStr( type_name );
     handler.ReadOpenFn = &read_open;
