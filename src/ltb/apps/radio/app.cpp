@@ -8,6 +8,7 @@
 #include "ltb/radio/user_config.hpp"
 #include "ltb/vlk/check.hpp"
 #include "ltb/vlk/render_pass.hpp"
+#include "hackrf_app/hackrf_app.hpp"
 #include "test_app/test_app.hpp"
 
 // external
@@ -33,7 +34,12 @@ RadioApp::RadioApp( window::GlfwContext& glfw_context, window::GlfwWindow& glfw_
     : glfw_context_( glfw_context )
     , glfw_window_( glfw_window )
 {
+    sub_app_entries_.push_back( { .name = "HackRF", .create = &make_sub_app< HackrfApp > } );
     sub_app_entries_.push_back( { .name = "Test App", .create = &make_sub_app< TestApp > } );
+
+    // The first entry is the default app.
+    requested_index_  = 0UZ;
+    change_requested_ = true;
 }
 
 auto RadioApp::initialize( ) -> utils::Result< exec::UpdateLoopStatus >
@@ -95,15 +101,6 @@ auto RadioApp::configure_gui( ) -> void
     utils::ignore(
         ImGui::DockSpaceOverViewport( 0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode )
     );
-
-    if ( show_main_window_ && ImGui::Begin( "Radio", &show_main_window_ ) )
-    {
-        ImGui::TextUnformatted( "Select an application from the Apps menu." );
-    }
-    if ( show_main_window_ )
-    {
-        ImGui::End( );
-    }
 
     if ( active_app_ )
     {
@@ -179,10 +176,8 @@ auto RadioApp::gui_toolbar( ) -> void
 
     if ( ImGui::BeginMenu( "View" ) )
     {
-        ImGui::MenuItem( "Radio", nullptr, &show_main_window_ );
         if ( active_app_ )
         {
-            ImGui::Separator( );
             active_app_->gui_view_menu_items( );
         }
         ImGui::EndMenu( );

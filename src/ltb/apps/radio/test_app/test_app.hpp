@@ -9,7 +9,7 @@
 namespace ltb::radio
 {
 
-// Collects development views: viewport tests, the ImGui demo and device info.
+// Collects development views: viewport tests and the ImGui demo.
 class TestApp : public SubApp
 {
 public:

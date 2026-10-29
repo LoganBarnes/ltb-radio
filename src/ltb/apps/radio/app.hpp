@@ -69,9 +69,8 @@ private:
     // ImGui stores a pointer to this path, so it must outlive the ImGui context.
     std::string imgui_ini_path_ = { };
 
-    bool initialized_      = false;
-    bool exit_requested_   = false;
-    bool show_main_window_ = true;
+    bool initialized_    = false;
+    bool exit_requested_ = false;
 
     auto initialize_gpu( ) -> utils::Result< RadioApp* >;
     auto initialize_presentation( ) -> utils::Result< RadioApp* >;
