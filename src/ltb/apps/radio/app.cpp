@@ -105,6 +105,14 @@ auto RadioApp::configure_gui( ) -> void
     if ( active_app_ )
     {
         active_app_->configure_gui( graphics_cmd_and_sync_.frame_index( ) );
+
+        auto  states = active_app_->view_states( );
+        auto& saved  = saved_view_states_[ active_app_->name( ) ];
+        if ( states != saved )
+        {
+            saved = std::move( states );
+            ImGui::MarkIniSettingsDirty( );
+        }
     }
 }
 
@@ -134,6 +142,12 @@ auto RadioApp::apply_app_change( ) -> utils::Result< void >
             }
         );
         active_index_ = requested_index_;
+
+        if ( auto const saved = saved_view_states_.find( active_app_->name( ) );
+             saved != saved_view_states_.end( ) )
+        {
+            active_app_->restore_view_states( saved->second );
+        }
     }
 
     return utils::success( );
@@ -228,6 +242,7 @@ auto RadioApp::initialize_presentation( ) -> utils::Result< RadioApp* >
     } ) );
 
     LTB_CHECK( imgui_.initialize( ) );
+    register_view_settings_handler( saved_view_states_ );
 
     // Keep the window layout between runs regardless of the working directory.
     if ( auto const config_dir = user_config_dir( ); config_dir )
@@ -241,6 +256,13 @@ auto RadioApp::initialize_presentation( ) -> utils::Result< RadioApp* >
             "Window layout will use the default location: {}",
             config_dir.error( ).debug_error_message( )
         );
+    }
+
+    // The default app is created before the first frame, so its saved views are needed now.
+    // ImGui won't reload the ini on the first frame once it has been loaded.
+    if ( auto const* const ini_path = ImGui::GetIO( ).IniFilename; ini_path != nullptr )
+    {
+        ImGui::LoadIniSettingsFromDisk( ini_path );
     }
 
     return this;

@@ -29,6 +29,27 @@ auto SubApp::gui_view_menu_items( ) -> void
     }
 }
 
+auto SubApp::view_states( ) const -> ViewStates
+{
+    auto states = ViewStates( );
+    for ( auto const& view : views_ )
+    {
+        states[ view->name( ) ] = view->is_open;
+    }
+    return states;
+}
+
+auto SubApp::restore_view_states( ViewStates const& states ) -> void
+{
+    for ( auto const& view : views_ )
+    {
+        if ( auto const it = states.find( view->name( ) ); it != states.end( ) )
+        {
+            view->is_open = it->second;
+        }
+    }
+}
+
 auto SubApp::configure_gui( uint32 const frame_index ) -> void
 {
     for ( auto const& view : views_ | std::views::filter( &AppView::is_open ) )

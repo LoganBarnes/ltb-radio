@@ -5,6 +5,7 @@
 
 // project
 #include "sub_app.hpp"
+#include "view_settings.hpp"
 #include "ltb/exec/update_loop.hpp"
 #include "ltb/gui/imgui_glfw_vulkan_setup.hpp"
 #include "ltb/vlk/objs/vulkan_command_and_sync.hpp"
@@ -45,6 +46,9 @@ private:
     vlk::objs::VulkanGpu gpu_                        = { glfw_context_, glfw_window_ };
     vk::Queue            graphics_and_compute_queue_ = nullptr;
     vk::Queue            presentation_queue_         = nullptr;
+
+    // Referenced by the ImGui ini handler, so it must outlive `imgui_`.
+    AppViewStates saved_view_states_ = { };
 
     vlk::objs::VulkanPresentation   presentation_          = { gpu_ };
     gui::ImguiGlfwVulkanSetup       imgui_                 = { glfw_window_, gpu_, presentation_ };

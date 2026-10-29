@@ -6,6 +6,7 @@
 // project
 #include "app_view.hpp"
 #include "sub_app_context.hpp"
+#include "view_settings.hpp"
 
 // standard
 #include <memory>
@@ -33,6 +34,12 @@ public:
 
     // Draws a menu item for each view. Call between BeginMenu and EndMenu.
     auto gui_view_menu_items( ) -> void;
+
+    [[nodiscard( "Const getter" )]]
+    auto view_states( ) const -> ViewStates;
+
+    // Opens or closes views by name. Unknown names are ignored.
+    auto restore_view_states( ViewStates const& states ) -> void;
 
     // Initializes newly opened views and draws all open views.
     auto configure_gui( uint32 frame_index ) -> void;
