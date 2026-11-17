@@ -185,6 +185,11 @@ auto StagePlotView::is_complex( ) const -> bool
     return info_.kind != dsp::StageKind::Real;
 }
 
+auto StagePlotView::is_rf( ) const -> bool
+{
+    return info_.kind == dsp::StageKind::RfInput || info_.kind == dsp::StageKind::Baseband;
+}
+
 auto StagePlotView::gui_toolbar( ) -> void
 {
     auto const previous_mode = mode_;
@@ -437,7 +442,7 @@ auto StagePlotView::handle_input( ) -> void
     {
         needs_fit_ = true;
     }
-    if ( mode_ == Mode::Spectrum && this->is_complex( )
+    if ( mode_ == Mode::Spectrum && this->is_rf( )
          && ImGui::IsMouseClicked( ImGuiMouseButton_Right ) )
     {
         this->tune_to( camera_.plot_from_screen( cursor, size ).x );
@@ -465,7 +470,7 @@ auto StagePlotView::draw_overlay( ) const -> void
     auto const to_screen
         = [ & ]( glm::vec2 const plot ) { return origin + camera_.screen_from_plot( plot, size ); };
 
-    if ( mode_ == Mode::Spectrum && this->is_complex( ) )
+    if ( mode_ == Mode::Spectrum && this->is_rf( ) )
     {
         this->draw_channel_marker( );
     }
@@ -594,7 +599,7 @@ auto StagePlotView::x_label( float32 const x, float32 const step ) const -> std:
     {
         return std::format( "{:.{}f} ms", x, decimals_for( step ) );
     }
-    if ( !this->is_complex( ) )
+    if ( !this->is_rf( ) )
     {
         return std::format( "{:.{}f} kHz", x, decimals_for( step ) );
     }

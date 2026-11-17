@@ -51,6 +51,11 @@ ReceiverApp::ReceiverApp( SubAppContext const& context, ReceiverAppSettings sett
     }
 }
 
+auto ReceiverApp::engine( ) -> RadioEngine&
+{
+    return engine_;
+}
+
 auto ReceiverApp::name( ) const -> std::string const&
 {
     return name_;

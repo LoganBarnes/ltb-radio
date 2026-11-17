@@ -81,39 +81,7 @@ auto RadioPipeline::stage_infos( Modulation const modulation ) -> std::vector< S
         },
     };
 
-    if ( modulation == Modulation::Am )
-    {
-        stages.insert(
-            stages.end( ),
-            {
-                {
-                    .name           = "Decimate by 5 (again)",
-                    .description    = "Low-pass filtered, then every 5th sample is kept.",
-                    .sample_rate_hz = input_rate_hz / 25.0,
-                    .kind           = StageKind::Baseband,
-                },
-                {
-                    .name           = "Channel Filter",
-                    .description    = "Keeps only the station's bandwidth, then decimates by 2.",
-                    .sample_rate_hz = audio_rate_hz,
-                    .kind           = StageKind::Baseband,
-                },
-                {
-                    .name           = "Envelope",
-                    .description    = "|I + jQ|: the carrier's amplitude, which follows the audio.",
-                    .sample_rate_hz = audio_rate_hz,
-                    .kind           = StageKind::Real,
-                },
-                {
-                    .name        = "Audio",
-                    .description = "The carrier (DC) is removed and the AGC normalizes the level.",
-                    .sample_rate_hz = audio_rate_hz,
-                    .kind           = StageKind::Real,
-                },
-            }
-        );
-    }
-    else
+    if ( modulation == Modulation::Fm )
     {
         stages.insert(
             stages.end( ),
@@ -148,13 +116,108 @@ auto RadioPipeline::stage_infos( Modulation const modulation ) -> std::vector< S
             }
         );
     }
+    else
+    {
+        stages.insert(
+            stages.end( ),
+            {
+                {
+                    .name           = "Decimate by 5 (again)",
+                    .description    = "Low-pass filtered, then every 5th sample is kept.",
+                    .sample_rate_hz = input_rate_hz / 25.0,
+                    .kind           = StageKind::Baseband,
+                },
+                {
+                    .name           = "Channel Filter",
+                    .description    = "Keeps only the station's bandwidth, then decimates by 2.",
+                    .sample_rate_hz = audio_rate_hz,
+                    .kind           = StageKind::Baseband,
+                },
+            }
+        );
+    }
+
+    if ( modulation == Modulation::Am )
+    {
+        stages.insert(
+            stages.end( ),
+            {
+                {
+                    .name           = "Envelope",
+                    .description    = "|I + jQ|: the carrier's amplitude, which follows the audio.",
+                    .sample_rate_hz = audio_rate_hz,
+                    .kind           = StageKind::Real,
+                },
+                {
+                    .name        = "Audio",
+                    .description = "The carrier (DC) is removed and the AGC normalizes the level.",
+                    .sample_rate_hz = audio_rate_hz,
+                    .kind           = StageKind::Real,
+                },
+            }
+        );
+    }
+    else if ( modulation == Modulation::Vor )
+    {
+        stages.insert(
+            stages.end( ),
+            {
+                {
+                    .name           = "AM Envelope",
+                    .description    = "The envelope divided by the carrier, minus 1. Contains the "
+                                      "variable 30 Hz tone, the 9960 Hz subcarrier and the 1020 Hz "
+                                      "Morse ident.",
+                    .sample_rate_hz = audio_rate_hz,
+                    .kind           = StageKind::Real,
+                },
+                {
+                    .name           = "Variable 30 Hz",
+                    .description    = "Low-pass filtered envelope. Its phase depends on the "
+                                      "direction from the station.",
+                    .sample_rate_hz = VorDemodulator::tone_rate_hz,
+                    .kind           = StageKind::Real,
+                },
+                {
+                    .name           = "9960 Hz Subcarrier",
+                    .description    = "The envelope shifted down by 9960 Hz and filtered. It is FM "
+                                      "modulated (+-480 Hz) by the reference tone.",
+                    .sample_rate_hz = VorDemodulator::subcarrier_rate_hz,
+                    .kind           = StageKind::Complex,
+                },
+                {
+                    .name           = "Reference 30 Hz",
+                    .description    = "The subcarrier's FM. Same phase in every direction; the "
+                                      "radial is how far the variable tone lags it.",
+                    .sample_rate_hz = VorDemodulator::tone_rate_hz,
+                    .kind           = StageKind::Real,
+                },
+                {
+                    .name           = "Audio (Ident)",
+                    .description    = "The envelope low-pass filtered to 2.5 kHz: the station's "
+                                      "Morse ident (1020 Hz) and any voice.",
+                    .sample_rate_hz = audio_rate_hz,
+                    .kind           = StageKind::Real,
+                },
+            }
+        );
+    }
     return stages;
 }
 
 auto RadioPipeline::bandwidth_limits( Modulation const modulation ) -> std::pair< float64, float64 >
 {
     // The upper limits keep the channel filters' stop bands clear of aliases.
-    return modulation == Modulation::Am ? std::pair( 2.0e3, 30.0e3 ) : std::pair( 50.0e3, 200.0e3 );
+    switch ( modulation )
+    {
+        case Modulation::Am:
+            return { 2.0e3, 30.0e3 };
+        case Modulation::Fm:
+            return { 50.0e3, 200.0e3 };
+        case Modulation::Vor:
+            // Must pass the 9960 Hz subcarrier and its FM.
+            return { 22.0e3, 30.0e3 };
+    }
+    return { 2.0e3, 30.0e3 };
 }
 
 auto RadioPipeline::configure( PipelineSettings settings ) -> void
@@ -194,13 +257,17 @@ auto RadioPipeline::process(
     mixer_.process( iq, shifted_ );
     observe( observer, 1UZ, shifted_ );
 
-    if ( modulation_ == Modulation::Am )
+    switch ( modulation_ )
     {
-        this->process_am( observer );
-    }
-    else
-    {
-        this->process_fm( observer );
+        case Modulation::Am:
+            this->process_am( observer );
+            break;
+        case Modulation::Fm:
+            this->process_fm( observer );
+            break;
+        case Modulation::Vor:
+            this->process_vor( observer );
+            break;
     }
 
     this->update_squelch( );
@@ -224,6 +291,11 @@ auto RadioPipeline::channel_power_db( ) const -> float32
 auto RadioPipeline::is_squelch_open( ) const -> bool
 {
     return squelch_open_;
+}
+
+auto RadioPipeline::vor_reading( ) const -> VorReading
+{
+    return modulation_ == Modulation::Vor ? vor_.reading( ) : VorReading{ };
 }
 
 auto RadioPipeline::update_squelch( ) -> void
@@ -252,7 +324,7 @@ auto RadioPipeline::design_filters( ) -> void
 {
     auto const half_bandwidth = 0.5 * settings_.channel_bandwidth_hz;
 
-    if ( modulation_ == Modulation::Am )
+    if ( modulation_ != Modulation::Fm )
     {
         decimate_1_
             = { design_decimation_filter( am_intermediate_passband_hz, input_rate_hz, 5UZ ), 5UZ };
@@ -290,7 +362,7 @@ auto RadioPipeline::design_filters( ) -> void
     }
 }
 
-auto RadioPipeline::process_am( StageObserver* const observer ) -> void
+auto RadioPipeline::process_to_channel( StageObserver* const observer ) -> void
 {
     decimated_1_.clear( );
     decimate_1_.process( shifted_, decimated_1_ );
@@ -303,6 +375,25 @@ auto RadioPipeline::process_am( StageObserver* const observer ) -> void
     channel_.clear( );
     channel_filter_.process( decimated_2_, channel_ );
     observe( observer, 4UZ, channel_ );
+}
+
+auto RadioPipeline::process_vor( StageObserver* const observer ) -> void
+{
+    this->process_to_channel( observer );
+
+    vor_.process( channel_ );
+    observe( observer, 5UZ, vor_.modulation( ) );
+    observe( observer, 6UZ, vor_.variable( ) );
+    observe( observer, 7UZ, vor_.subcarrier( ) );
+    observe( observer, 8UZ, vor_.reference( ) );
+    observe( observer, 9UZ, vor_.audio( ) );
+
+    audio_block_ = vor_.audio( );
+}
+
+auto RadioPipeline::process_am( StageObserver* const observer ) -> void
+{
+    this->process_to_channel( observer );
 
     envelope( channel_, demodulated_ );
     observe( observer, 5UZ, demodulated_ );

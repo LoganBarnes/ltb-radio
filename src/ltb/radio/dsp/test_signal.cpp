@@ -12,12 +12,17 @@ namespace ltb::radio::dsp
 namespace
 {
 
-constexpr auto two_pi          = 2.0 * std::numbers::pi;
-constexpr auto am_depth        = 0.8;
-constexpr auto fm_deviation_hz = 75.0e3;
-constexpr auto keyed_fraction  = 0.4;
-constexpr auto tremolo_hz      = 0.5;
-constexpr auto edge_of_band    = 0.45;
+constexpr auto two_pi            = 2.0 * std::numbers::pi;
+constexpr auto am_depth          = 0.8;
+constexpr auto fm_deviation_hz   = 75.0e3;
+constexpr auto keyed_fraction    = 0.4;
+constexpr auto vor_tone_hz       = 30.0;
+constexpr auto vor_subcarrier_hz = 9960.0;
+constexpr auto vor_deviation_hz  = 480.0;
+constexpr auto vor_depth         = 0.3;
+constexpr auto vor_ident_depth   = 0.1;
+constexpr auto tremolo_hz        = 0.5;
+constexpr auto edge_of_band      = 0.45;
 
 auto rotation( float64 const frequency_hz, float64 const sample_rate_hz ) -> std::complex< float64 >
 {
@@ -39,9 +44,11 @@ TestSignalGenerator::TestSignalGenerator(
     for ( auto const& settings : stations )
     {
         stations_.push_back( {
-            .settings     = settings,
-            .tone_step    = rotation( settings.tone_hz, sample_rate_hz ),
-            .tremolo_step = rotation( tremolo_hz, sample_rate_hz ),
+            .settings        = settings,
+            .tone_step       = rotation( settings.tone_hz, sample_rate_hz ),
+            .tremolo_step    = rotation( tremolo_hz, sample_rate_hz ),
+            .nav_tone_step   = rotation( vor_tone_hz, sample_rate_hz ),
+            .radial_rotation = std::polar( 1.0, -settings.radial_deg * std::numbers::pi / 180.0 ),
         } );
     }
 }
@@ -49,6 +56,15 @@ TestSignalGenerator::TestSignalGenerator(
 auto TestSignalGenerator::default_stations( Modulation const modulation )
     -> std::vector< TestStation >
 {
+    if ( modulation == Modulation::Vor )
+    {
+        // Southern Utah VORs, with the radials of a receiver near Cedar City (approximate).
+        return {
+            { .frequency_hz = 117.3e6, .level = 0.10F, .tone_hz = 1'020.0, .radial_deg = 196.0 },
+            { .frequency_hz = 112.1e6, .level = 0.03F, .tone_hz = 1'020.0, .radial_deg = 160.0 },
+            { .frequency_hz = 108.6e6, .level = 0.03F, .tone_hz = 1'020.0, .radial_deg = 30.0 },
+        };
+    }
     if ( modulation == Modulation::Am )
     {
         return {
@@ -105,9 +121,22 @@ auto TestSignalGenerator::add_station( Station& station, std::span< Complex > ou
         {
             amplitude *= 1.0 + am_depth * audio;
         }
-        else
+        else if ( modulation_ == Modulation::Fm )
         {
             frequency += fm_deviation_hz * audio;
+        }
+        else
+        {
+            // Reference 30 Hz as FM on the subcarrier; the variable 30 Hz lags it by the radial.
+            auto const reference = station.nav_tone.real( );
+            auto const variable  = ( station.nav_tone * station.radial_rotation ).real( );
+            auto const ident     = station.tremolo.imag( ) > 0.5 ? station.tone.imag( ) : 0.0;
+            amplitude *= 1.0 + vor_depth * variable
+                       + vor_depth * std::cos( station.subcarrier_phase ) + vor_ident_depth * ident;
+
+            station.subcarrier_phase
+                += two_pi * ( vor_subcarrier_hz + vor_deviation_hz * reference ) / sample_rate_hz_;
+            station.nav_tone *= station.nav_tone_step;
         }
 
         if ( visible )
@@ -117,7 +146,9 @@ auto TestSignalGenerator::add_station( Station& station, std::span< Complex > ou
         station.phase += two_pi * frequency / sample_rate_hz_;
     }
 
-    station.phase = std::remainder( station.phase, two_pi );
+    station.phase            = std::remainder( station.phase, two_pi );
+    station.subcarrier_phase = std::remainder( station.subcarrier_phase, two_pi );
+    station.nav_tone /= std::abs( station.nav_tone );
     station.tone /= std::abs( station.tone );
     station.tremolo /= std::abs( station.tremolo );
 }

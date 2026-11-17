@@ -77,6 +77,10 @@ private:
     [[nodiscard( "Const getter" )]]
     auto is_complex( ) const -> bool;
 
+    // Complex samples whose spectrum maps to radio frequencies (so it can be tuned).
+    [[nodiscard( "Const getter" )]]
+    auto is_rf( ) const -> bool;
+
     auto gui_toolbar( ) -> void;
     auto update_data( ) -> void;
     auto update_spectrum( ) -> void;

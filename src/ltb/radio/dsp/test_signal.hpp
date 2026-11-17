@@ -23,6 +23,9 @@ struct TestStation
     // When positive, the station transmits for the first 40% of every period (like a pilot
     // keying a microphone). Otherwise it transmits continuously.
     float64 keyed_period_s = 0.0;
+
+    // VOR only: the radial the simulated receiver is on. `tone_hz` is the ident tone.
+    float64 radial_deg = 0.0;
 };
 
 // Synthesizes I/Q samples as a receiver tuned to `center_frequency` would see them, so the
@@ -56,6 +59,12 @@ private:
         std::complex< float64 > tremolo_step = 1.0;
         float64                 phase        = 0.0;
         uint64                  sample_count = 0U;
+
+        // VOR navigation tones.
+        std::complex< float64 > nav_tone         = 1.0;
+        std::complex< float64 > nav_tone_step    = 1.0;
+        std::complex< float64 > radial_rotation  = 1.0;
+        float64                 subcarrier_phase = 0.0;
     };
 
     Modulation             modulation_;

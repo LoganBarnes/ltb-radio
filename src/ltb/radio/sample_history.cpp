@@ -27,6 +27,7 @@ auto SampleHistory::push( std::span< float32 const > const samples ) -> void
 template < typename Sample >
 auto SampleHistory::push_impl( std::span< Sample const > samples ) -> void
 {
+    auto const pushed = samples.size( );
     // Older samples would be overwritten anyway.
     samples = samples.last( std::min( samples.size( ), data_.size( ) ) );
 
@@ -37,11 +38,12 @@ auto SampleHistory::push_impl( std::span< Sample const > samples ) -> void
         write_          = ( write_ + 1UZ ) % data_.size( );
     }
     size_ = std::min( size_ + samples.size( ), data_.size( ) );
+    total_ += pushed;
     ++version_;
 }
 
 auto SampleHistory::copy_latest( std::size_t count, std::vector< dsp::Complex >& output ) const
-    -> void
+    -> uint64
 {
     auto const lock = std::scoped_lock( mutex_ );
 
@@ -54,6 +56,7 @@ auto SampleHistory::copy_latest( std::size_t count, std::vector< dsp::Complex >&
         sample = data_[ read ];
         read   = ( read + 1UZ ) % data_.size( );
     }
+    return total_;
 }
 
 auto SampleHistory::version( ) const -> uint64
@@ -72,6 +75,7 @@ auto SampleHistory::clear( ) -> void
     auto const lock = std::scoped_lock( mutex_ );
     write_          = 0UZ;
     size_           = 0UZ;
+    total_          = 0U;
     ++version_;
 }
 

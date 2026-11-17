@@ -8,6 +8,7 @@
 #include "ltb/radio/dsp/fir_filter.hpp"
 #include "ltb/radio/dsp/mixer.hpp"
 #include "ltb/radio/dsp/types.hpp"
+#include "ltb/radio/dsp/vor_demodulator.hpp"
 
 // standard
 #include <span>
@@ -23,6 +24,8 @@ enum class StageKind
     RfInput,
     // Complex samples centered on the tuned station.
     Baseband,
+    // Complex samples unrelated to the RF spectrum (e.g. a subcarrier).
+    Complex,
     // Real samples (demodulated or audio).
     Real,
 };
@@ -68,11 +71,16 @@ public:
 //
 // AM: shift -> /5 -> /5 -> channel filter /2 -> envelope -> DC block + AGC
 // FM: shift -> /5 -> channel filter /2 -> discriminator -> de-emphasis -> audio filter /5
+// VOR: as AM to the channel filter, then `VorDemodulator` (navigation tones and ident audio)
 class RadioPipeline
 {
 public:
     static constexpr auto input_rate_hz = 2.4e6;
     static constexpr auto audio_rate_hz = 48.0e3;
+
+    // VOR stages with the two 30 Hz tones.
+    static constexpr auto vor_variable_stage  = 6UZ;
+    static constexpr auto vor_reference_stage = 8UZ;
 
     RadioPipeline( Modulation modulation, PipelineSettings settings );
 
@@ -97,6 +105,10 @@ public:
     [[nodiscard( "Const getter" )]]
     auto is_squelch_open( ) const -> bool;
 
+    // Only valid for `Modulation::Vor`.
+    [[nodiscard( "Const getter" )]]
+    auto vor_reading( ) const -> VorReading;
+
     // Appends the audio for `iq` to `audio`.
     auto
     process( std::span< Complex const > iq, std::vector< float32 >& audio, StageObserver* observer )
@@ -115,6 +127,7 @@ private:
     DeEmphasis               de_emphasis_    = { };
     DcBlocker                dc_blocker_     = { };
     Agc                      agc_            = { };
+    VorDemodulator           vor_            = { };
 
     std::vector< Complex > shifted_     = { };
     std::vector< Complex > decimated_1_ = { };
@@ -130,6 +143,8 @@ private:
     auto design_filters( ) -> void;
     auto process_am( StageObserver* observer ) -> void;
     auto process_fm( StageObserver* observer ) -> void;
+    auto process_vor( StageObserver* observer ) -> void;
+    auto process_to_channel( StageObserver* observer ) -> void;
     auto update_squelch( ) -> void;
 };
 

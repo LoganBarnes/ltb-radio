@@ -24,8 +24,9 @@ public:
     auto push( std::span< dsp::Complex const > samples ) -> void;
     auto push( std::span< float32 const > samples ) -> void;
 
-    // Overwrites `output` with up to `count` of the newest samples (oldest first).
-    auto copy_latest( std::size_t count, std::vector< dsp::Complex >& output ) const -> void;
+    // Overwrites `output` with up to `count` of the newest samples (oldest first). Returns the
+    // total number of samples pushed so far (the index after the newest sample).
+    auto copy_latest( std::size_t count, std::vector< dsp::Complex >& output ) const -> uint64;
 
     // Increases whenever samples are pushed, so readers can skip unchanged data.
     [[nodiscard( "Const getter" )]]
@@ -42,6 +43,7 @@ private:
     std::size_t                 write_   = 0UZ;
     std::size_t                 size_    = 0UZ;
     uint64                      version_ = 0U;
+    uint64                      total_   = 0U;
 
     template < typename Sample >
     auto push_impl( std::span< Sample const > samples ) -> void;

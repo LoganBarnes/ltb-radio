@@ -12,6 +12,7 @@
 #include "ltb/vlk/check.hpp"
 #include "ltb/vlk/render_pass.hpp"
 #include "test_app/test_app.hpp"
+#include "vor_radio_app/vor_radio_app.hpp"
 
 // external
 #include <imgui.h>
@@ -39,6 +40,7 @@ RadioApp::RadioApp( window::GlfwContext& glfw_context, window::GlfwWindow& glfw_
     sub_app_entries_.push_back( { .name = "HackRF", .create = &make_sub_app< HackrfApp > } );
     sub_app_entries_.push_back( { .name = "AM Radio", .create = &make_sub_app< AmRadioApp > } );
     sub_app_entries_.push_back( { .name = "FM Radio", .create = &make_sub_app< FmRadioApp > } );
+    sub_app_entries_.push_back( { .name = "VOR", .create = &make_sub_app< VorRadioApp > } );
     sub_app_entries_.push_back( { .name = "Test App", .create = &make_sub_app< TestApp > } );
 
     // The first entry is the default app.

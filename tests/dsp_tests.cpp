@@ -266,11 +266,72 @@ TEST( RadioPipeline, SquelchMutesAnEmptyChannel )
     EXPECT_NEAR( dominant_frequency( busy, RadioPipeline::audio_rate_hz ), 1'000.0, 12.0 );
 }
 
+// Smallest angle between two bearings.
+auto angle_between( float64 const a_deg, float64 const b_deg ) -> float64
+{
+    auto const difference = std::fmod( std::abs( a_deg - b_deg ), 360.0 );
+    return std::min( difference, 360.0 - difference );
+}
+
+TEST( RadioPipeline, VorRecoversTheRadial )
+{
+    constexpr auto fs = RadioPipeline::input_rate_hz;
+
+    for ( auto const radial : { 0.0, 45.0, 90.0, 196.0, 271.5, 359.0 } )
+    {
+        auto generator = TestSignalGenerator(
+            Modulation::Vor,
+            fs,
+            { { .frequency_hz = 250.0e3,
+                .level        = 0.1F,
+                .tone_hz      = 1'020.0,
+                .radial_deg   = radial } },
+            0.001F
+        );
+        auto pipeline = RadioPipeline(
+            Modulation::Vor,
+            { .shift_hz = 250.0e3, .channel_bandwidth_hz = 25.0e3 }
+        );
+
+        auto block = std::vector< Complex >( 24'000UZ );
+        auto audio = std::vector< float32 >( );
+        for ( auto i = 0; i < 300; ++i ) // 3 seconds
+        {
+            generator.generate( block );
+            pipeline.process( block, audio, nullptr );
+        }
+
+        auto const reading = pipeline.vor_reading( );
+        EXPECT_TRUE( reading.valid ) << radial;
+        EXPECT_LT( angle_between( reading.radial_deg, radial ), 1.0 )
+            << radial << " vs " << reading.radial_deg;
+        EXPECT_NEAR( reading.variable_level, 0.3F, 0.03F );
+        EXPECT_NEAR( reading.reference_level, 1.0F, 0.1F );
+    }
+}
+
+TEST( RadioPipeline, VorIsInvalidWithoutAStation )
+{
+    auto generator
+        = TestSignalGenerator( Modulation::Vor, RadioPipeline::input_rate_hz, { }, 0.01F );
+    auto pipeline
+        = RadioPipeline( Modulation::Vor, { .shift_hz = 250.0e3, .channel_bandwidth_hz = 25.0e3 } );
+
+    auto block = std::vector< Complex >( 24'000UZ );
+    auto audio = std::vector< float32 >( );
+    for ( auto i = 0; i < 100; ++i )
+    {
+        generator.generate( block );
+        pipeline.process( block, audio, nullptr );
+    }
+    EXPECT_FALSE( pipeline.vor_reading( ).valid );
+}
+
 TEST( RadioPipeline, ReportsEveryStage )
 {
     struct CountingObserver : StageObserver
     {
-        std::vector< std::size_t > counts = std::vector< std::size_t >( 7UZ );
+        std::vector< std::size_t > counts = std::vector< std::size_t >( 10UZ );
 
         auto on_stage_output( std::size_t const stage, std::span< Complex const > const samples )
             -> void override
@@ -285,7 +346,7 @@ TEST( RadioPipeline, ReportsEveryStage )
         }
     };
 
-    for ( auto const modulation : { Modulation::Am, Modulation::Fm } )
+    for ( auto const modulation : { Modulation::Am, Modulation::Fm, Modulation::Vor } )
     {
         auto const stages   = RadioPipeline::stage_infos( modulation );
         auto       pipeline = RadioPipeline( modulation, { } );
@@ -294,7 +355,7 @@ TEST( RadioPipeline, ReportsEveryStage )
 
         pipeline.process( std::vector< Complex >( 240'000UZ ), audio, &observer );
 
-        ASSERT_EQ( stages.size( ), observer.counts.size( ) );
+        ASSERT_LE( stages.size( ), observer.counts.size( ) );
         for ( auto i = 0UZ; i < stages.size( ); ++i )
         {
             // Each stage produces samples at its advertised rate (0.1 s of input).

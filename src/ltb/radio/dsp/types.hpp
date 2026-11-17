@@ -18,6 +18,8 @@ enum class Modulation
 {
     Am,
     Fm,
+    // VHF omnidirectional range: AM with navigation tones.
+    Vor,
 };
 
 } // namespace ltb::radio::dsp

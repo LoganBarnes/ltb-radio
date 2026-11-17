@@ -285,6 +285,10 @@ auto ReceiverControlsView::gui_demodulation( RadioSettings& settings ) -> void
         );
         return;
     }
+    if ( engine_.modulation( ) != dsp::Modulation::Fm )
+    {
+        return;
+    }
 
     auto const current = std::ranges::
         find( deemphasis_options, settings.deemphasis_tau_s, &DeEmphasisOption::tau_s );

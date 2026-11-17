@@ -172,6 +172,15 @@ auto RadioEngine::stop( ) -> void
     source_thread_ = { };
     worker_thread_ = { };
     audio_.reset( );
+
+    auto const lock = std::scoped_lock( vor_mutex_ );
+    vor_reading_    = { };
+}
+
+auto RadioEngine::vor_reading( ) const -> dsp::VorReading
+{
+    auto const lock = std::scoped_lock( vor_mutex_ );
+    return vor_reading_;
 }
 
 auto RadioEngine::is_running( ) const -> bool
@@ -232,6 +241,7 @@ auto RadioEngine::status( ) const -> RadioStatus
         = dropped_test_samples_.load( ) + ( hackrf_ ? hackrf_->dropped_samples( ) : 0U ),
         .channel_power_db = channel_power_db_.load( ),
         .squelch_open     = squelch_open_.load( ),
+        .vor              = this->vor_reading( ),
         .audio_error      = audio_error_,
     };
 }
@@ -327,6 +337,10 @@ auto RadioEngine::run_worker( std::stop_token const& stop ) -> void
 
         channel_power_db_ = pipeline->channel_power_db( );
         squelch_open_     = pipeline->is_squelch_open( );
+        {
+            auto const lock = std::scoped_lock( vor_mutex_ );
+            vor_reading_    = pipeline->vor_reading( );
+        }
         audio_buffer_.push( audio );
     }
 }

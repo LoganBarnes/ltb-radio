@@ -32,6 +32,10 @@ public:
     [[nodiscard( "Const getter" )]]
     auto name( ) const -> std::string const& override;
 
+protected:
+    [[nodiscard( "Getter" )]]
+    auto engine( ) -> RadioEngine&;
+
 private:
     std::string name_;
 

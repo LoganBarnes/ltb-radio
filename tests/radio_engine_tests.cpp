@@ -55,3 +55,34 @@ TEST( RadioEngine, TestSignalReachesEveryStageAndStopsCleanly )
 
 } // namespace
 } // namespace ltb::radio
+
+namespace ltb::radio
+{
+namespace
+{
+
+TEST( RadioEngine, VorTestSignalReportsTheSimulatedRadial )
+{
+    auto engine = RadioEngine(
+        dsp::Modulation::Vor,
+        {
+            .center_frequency_hz  = 117.05e6,
+            .station_frequency_hz = 117.3e6,
+            .channel_bandwidth_hz = 25.0e3,
+            .muted                = true,
+        }
+    );
+
+    ASSERT_TRUE( engine.start( ) );
+    std::this_thread::sleep_for( std::chrono::milliseconds( 2000 ) );
+
+    auto const reading = engine.status( ).vor;
+    EXPECT_TRUE( reading.valid );
+    EXPECT_NEAR( reading.radial_deg, 196.0F, 2.0F ); // The simulated Cedar City VOR.
+
+    engine.stop( );
+    EXPECT_FALSE( engine.status( ).vor.valid );
+}
+
+} // namespace
+} // namespace ltb::radio
