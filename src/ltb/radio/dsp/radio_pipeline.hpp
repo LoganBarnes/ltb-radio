@@ -6,6 +6,7 @@
 // project
 #include "ltb/radio/dsp/demodulators.hpp"
 #include "ltb/radio/dsp/fir_filter.hpp"
+#include "ltb/radio/dsp/ils_demodulator.hpp"
 #include "ltb/radio/dsp/mixer.hpp"
 #include "ltb/radio/dsp/types.hpp"
 #include "ltb/radio/dsp/vor_demodulator.hpp"
@@ -72,6 +73,7 @@ public:
 // AM: shift -> /5 -> /5 -> channel filter /2 -> envelope -> DC block + AGC
 // FM: shift -> /5 -> channel filter /2 -> discriminator -> de-emphasis -> audio filter /5
 // VOR: as AM to the channel filter, then `VorDemodulator` (navigation tones and ident audio)
+// ILS: as AM to the channel filter, then `IlsDemodulator` (90/150 Hz tones and ident audio)
 class RadioPipeline
 {
 public:
@@ -109,6 +111,10 @@ public:
     [[nodiscard( "Const getter" )]]
     auto vor_reading( ) const -> VorReading;
 
+    // Only valid for `Modulation::Ils`.
+    [[nodiscard( "Const getter" )]]
+    auto ils_reading( ) const -> IlsReading;
+
     // Appends the audio for `iq` to `audio`.
     auto
     process( std::span< Complex const > iq, std::vector< float32 >& audio, StageObserver* observer )
@@ -128,6 +134,7 @@ private:
     DcBlocker                dc_blocker_     = { };
     Agc                      agc_            = { };
     VorDemodulator           vor_            = { };
+    IlsDemodulator           ils_            = { };
 
     std::vector< Complex > shifted_     = { };
     std::vector< Complex > decimated_1_ = { };
@@ -144,6 +151,7 @@ private:
     auto process_am( StageObserver* observer ) -> void;
     auto process_fm( StageObserver* observer ) -> void;
     auto process_vor( StageObserver* observer ) -> void;
+    auto process_ils( StageObserver* observer ) -> void;
     auto process_to_channel( StageObserver* observer ) -> void;
     auto update_squelch( ) -> void;
 };

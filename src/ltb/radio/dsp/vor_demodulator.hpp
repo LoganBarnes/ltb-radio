@@ -75,16 +75,7 @@ public:
     auto reference_delay_s( ) const -> float64;
 
 private:
-    // Measures a 30 Hz tone's amplitude and phase against a fixed-frequency oscillator.
-    struct ToneMeter
-    {
-        std::complex< float64 > oscillator  = 1.0;
-        std::complex< float64 > correlation = 0.0;
-
-        auto process( std::span< float32 const > samples ) -> void;
-    };
-
-    float32 carrier_level_ = 0.0F;
+    CarrierNormalizer carrier_ = { };
 
     DecimatingFir< float32 > variable_filter_;
     Mixer                    subcarrier_mixer_ = { };

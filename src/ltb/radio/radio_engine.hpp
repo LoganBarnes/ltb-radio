@@ -63,6 +63,8 @@ struct RadioStatus
     bool    squelch_open          = true;
     // Only valid for VOR radios.
     dsp::VorReading vor = { };
+    // Only valid for ILS radios.
+    dsp::IlsReading ils = { };
     // Set when audio could not start; the radio still runs without sound.
     std::string audio_error = { };
 };
@@ -135,8 +137,9 @@ private:
     std::atomic< float32 >                 processing_load_          = 0.0F;
     std::atomic< float32 >                 channel_power_db_         = -200.0F;
     std::atomic< bool >                    squelch_open_             = true;
-    mutable std::mutex                     vor_mutex_                = { };
+    mutable std::mutex                     navigation_mutex_         = { };
     dsp::VorReading                        vor_reading_              = { };
+    dsp::IlsReading                        ils_reading_              = { };
     std::atomic< uint64 >                  dropped_test_samples_     = 0U;
 
     std::jthread worker_thread_ = { };
@@ -149,6 +152,9 @@ private:
 
     [[nodiscard( "Const getter" )]]
     auto vor_reading( ) const -> dsp::VorReading;
+
+    [[nodiscard( "Const getter" )]]
+    auto ils_reading( ) const -> dsp::IlsReading;
 
     auto run_worker( std::stop_token const& stop ) -> void;
     auto run_test_source( std::stop_token const& stop ) -> void;

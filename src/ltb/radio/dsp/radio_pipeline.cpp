@@ -201,6 +201,36 @@ auto RadioPipeline::stage_infos( Modulation const modulation ) -> std::vector< S
             }
         );
     }
+    else if ( modulation == Modulation::Ils )
+    {
+        stages.insert(
+            stages.end( ),
+            {
+                {
+                    .name           = "AM Envelope",
+                    .description    = "The envelope divided by the carrier, minus 1. Contains the "
+                                      "90 Hz and 150 Hz navigation tones and the Morse ident.",
+                    .sample_rate_hz = audio_rate_hz,
+                    .kind           = StageKind::Real,
+                },
+                {
+                    .name           = "90 + 150 Hz Tones",
+                    .description    = "Low-pass filtered envelope. The difference between the two "
+                                      "tones' depths (DDM) is the course or glide path deviation. "
+                                      "The Spectrum view shows both peaks.",
+                    .sample_rate_hz = IlsDemodulator::tone_rate_hz,
+                    .kind           = StageKind::Real,
+                },
+                {
+                    .name           = "Audio (Ident)",
+                    .description    = "The envelope band-pass filtered to 500-2500 Hz: the "
+                                      "localizer's Morse ident (1020 Hz) and any voice.",
+                    .sample_rate_hz = audio_rate_hz,
+                    .kind           = StageKind::Real,
+                },
+            }
+        );
+    }
     return stages;
 }
 
@@ -216,6 +246,8 @@ auto RadioPipeline::bandwidth_limits( Modulation const modulation ) -> std::pair
         case Modulation::Vor:
             // Must pass the 9960 Hz subcarrier and its FM.
             return { 22.0e3, 30.0e3 };
+        case Modulation::Ils:
+            return { 6.0e3, 30.0e3 };
     }
     return { 2.0e3, 30.0e3 };
 }
@@ -268,6 +300,9 @@ auto RadioPipeline::process(
         case Modulation::Vor:
             this->process_vor( observer );
             break;
+        case Modulation::Ils:
+            this->process_ils( observer );
+            break;
     }
 
     this->update_squelch( );
@@ -296,6 +331,11 @@ auto RadioPipeline::is_squelch_open( ) const -> bool
 auto RadioPipeline::vor_reading( ) const -> VorReading
 {
     return modulation_ == Modulation::Vor ? vor_.reading( ) : VorReading{ };
+}
+
+auto RadioPipeline::ils_reading( ) const -> IlsReading
+{
+    return modulation_ == Modulation::Ils ? ils_.reading( ) : IlsReading{ };
 }
 
 auto RadioPipeline::update_squelch( ) -> void
@@ -389,6 +429,18 @@ auto RadioPipeline::process_vor( StageObserver* const observer ) -> void
     observe( observer, 9UZ, vor_.audio( ) );
 
     audio_block_ = vor_.audio( );
+}
+
+auto RadioPipeline::process_ils( StageObserver* const observer ) -> void
+{
+    this->process_to_channel( observer );
+
+    ils_.process( channel_ );
+    observe( observer, 5UZ, ils_.modulation( ) );
+    observe( observer, 6UZ, ils_.tones( ) );
+    observe( observer, 7UZ, ils_.audio( ) );
+
+    audio_block_ = ils_.audio( );
 }
 
 auto RadioPipeline::process_am( StageObserver* const observer ) -> void

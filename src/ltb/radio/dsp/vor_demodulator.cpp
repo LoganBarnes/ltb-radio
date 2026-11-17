@@ -49,19 +49,6 @@ struct ToComplex
 
 } // namespace
 
-auto VorDemodulator::ToneMeter::process( std::span< float32 const > const samples ) -> void
-{
-    static auto const step      = std::polar( 1.0, -two_pi * tone_hz / tone_rate_hz );
-    static auto const smoothing = 1.0 / ( meter_time_constant * tone_rate_hz );
-
-    for ( auto const sample : samples )
-    {
-        correlation += smoothing * ( static_cast< float64 >( sample ) * oscillator - correlation );
-        oscillator *= step;
-    }
-    oscillator /= std::abs( oscillator );
-}
-
 VorDemodulator::VorDemodulator( )
     : variable_filter_(
           design_decimation_filter( tone_passband_hz, input_rate_hz, variable_decimation ),
@@ -80,6 +67,9 @@ VorDemodulator::VorDemodulator( )
     subcarrier_mixer_.set_shift( subcarrier_hz, input_rate_hz );
     discriminator_.configure( subcarrier_dev_hz, subcarrier_rate_hz );
     audio_dc_blocker_.configure( audio_dc_cutoff_hz, input_rate_hz );
+    carrier_.configure( carrier_time_constant, input_rate_hz );
+    variable_meter_.configure( tone_hz, tone_rate_hz, meter_time_constant );
+    reference_meter_.configure( tone_hz, tone_rate_hz, meter_time_constant );
 
     // The discriminator measures the frequency halfway between two samples.
     reference_delay_s_ = group_delay( subcarrier_filter_.tap_count( ), input_rate_hz )
@@ -92,21 +82,8 @@ auto VorDemodulator::process( std::span< Complex const > const channel ) -> void
 {
     envelope( channel, envelope_ );
 
-    // Normalize by the carrier so levels don't depend on signal strength. Start from the first
-    // block's average; starting from zero would make the first samples huge.
-    if ( carrier_level_ <= 0.0F && !envelope_.empty( ) )
-    {
-        carrier_level_ = std::reduce( envelope_.begin( ), envelope_.end( ), 0.0F )
-                       / static_cast< float32 >( envelope_.size( ) );
-    }
-    auto const smoothing
-        = static_cast< float32 >( 1.0 / ( carrier_time_constant * input_rate_hz ) );
-    modulation_.resize( envelope_.size( ) );
-    for ( auto&& [ amplitude, modulation ] : std::views::zip( envelope_, modulation_ ) )
-    {
-        carrier_level_ += smoothing * ( amplitude - carrier_level_ );
-        modulation = amplitude / std::max( carrier_level_, 1e-9F ) - 1.0F;
-    }
+    // Normalize by the carrier so levels don't depend on signal strength.
+    carrier_.process( envelope_, modulation_ );
 
     variable_.clear( );
     variable_filter_.process( modulation_, variable_ );
@@ -162,8 +139,7 @@ auto VorDemodulator::reading( ) const -> VorReading
 {
     // The variable tone lags the reference by the radial. Undo the extra phase the reference
     // picked up from its longer filter chain.
-    auto const lag
-        = std::arg( reference_meter_.correlation ) - std::arg( variable_meter_.correlation );
+    auto const lag     = reference_meter_.phase( ) - variable_meter_.phase( );
     auto const radians = lag + two_pi * tone_hz * reference_delay_s_;
     auto       degrees = std::fmod( radians * 180.0 / std::numbers::pi, 360.0 );
     if ( degrees < 0.0 )
@@ -171,11 +147,8 @@ auto VorDemodulator::reading( ) const -> VorReading
         degrees += 360.0;
     }
 
-    // A tone of amplitude A correlates to A / 2.
-    auto const variable_level
-        = static_cast< float32 >( 2.0 * std::abs( variable_meter_.correlation ) );
-    auto const reference_level
-        = static_cast< float32 >( 2.0 * std::abs( reference_meter_.correlation ) );
+    auto const variable_level  = variable_meter_.amplitude( );
+    auto const reference_level = reference_meter_.amplitude( );
 
     return {
         .radial_deg      = static_cast< float32 >( degrees ),

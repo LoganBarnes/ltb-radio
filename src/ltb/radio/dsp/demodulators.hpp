@@ -73,4 +73,45 @@ private:
     float32 level_    = 0.0F;
 };
 
+// Turns an AM envelope into the modulation relative to the carrier (envelope / carrier - 1), so
+// tone depths don't depend on signal strength. The carrier level is tracked slowly.
+class CarrierNormalizer
+{
+public:
+    auto configure( float64 time_constant_s, float64 sample_rate_hz ) -> void;
+
+    // Overwrites `output`.
+    auto process( std::span< float32 const > envelope, std::vector< float32 >& output ) -> void;
+
+private:
+    float32 smoothing_    = 1e-4F;
+    float32 carrier_      = 0.0F;
+    uint64  sample_count_ = 0U;
+};
+
+// Measures the amplitude and phase of a tone at a fixed frequency: a single DFT bin, averaged
+// over time by two exponential stages. The second stage suppresses the ripple that other tones
+// (and the tone's own negative frequency) leave after the first.
+class ToneMeter
+{
+public:
+    auto configure( float64 tone_hz, float64 sample_rate_hz, float64 time_constant_s ) -> void;
+    auto process( std::span< float32 const > samples ) -> void;
+
+    // Peak amplitude of the tone.
+    [[nodiscard( "Const getter" )]]
+    auto amplitude( ) const -> float32;
+
+    // Phase (radians) relative to a cosine that started at the first sample.
+    [[nodiscard( "Const getter" )]]
+    auto phase( ) const -> float64;
+
+private:
+    std::complex< float64 > oscillator_  = 1.0;
+    std::complex< float64 > step_        = 1.0;
+    std::complex< float64 > correlation_ = 0.0;
+    std::complex< float64 > smoothed_    = 0.0;
+    float64                 smoothing_   = 0.0;
+};
+
 } // namespace ltb::radio::dsp

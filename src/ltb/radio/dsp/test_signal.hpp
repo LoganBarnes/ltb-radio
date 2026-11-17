@@ -26,6 +26,11 @@ struct TestStation
 
     // VOR only: the radial the simulated receiver is on. `tone_hz` is the ident tone.
     float64 radial_deg = 0.0;
+
+    // ILS only: each tone's nominal depth (0.2 localizer, 0.4 glideslope) and the difference in
+    // depth of modulation (90 Hz minus 150 Hz).
+    float64 ils_depth = 0.2;
+    float64 ils_ddm   = 0.0;
 };
 
 // Synthesizes I/Q samples as a receiver tuned to `center_frequency` would see them, so the

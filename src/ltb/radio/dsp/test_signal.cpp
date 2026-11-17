@@ -56,6 +56,27 @@ TestSignalGenerator::TestSignalGenerator(
 auto TestSignalGenerator::default_stations( Modulation const modulation )
     -> std::vector< TestStation >
 {
+    if ( modulation == Modulation::Ils )
+    {
+        // Cedar City ILS RWY 20: an aircraft a little left of course and below the glide path.
+        // The glideslope has no ident (tone 0 Hz).
+        return {
+            {
+                .frequency_hz = 110.10e6,
+                .level        = 0.10F,
+                .tone_hz      = 1'020.0,
+                .ils_depth    = 0.2,
+                .ils_ddm      = 0.05,
+            },
+            {
+                .frequency_hz = 334.40e6,
+                .level        = 0.08F,
+                .tone_hz      = 0.0,
+                .ils_depth    = 0.4,
+                .ils_ddm      = -0.06,
+            },
+        };
+    }
     if ( modulation == Modulation::Vor )
     {
         // Southern Utah VORs, with the radials of a receiver near Cedar City (approximate).
@@ -124,6 +145,18 @@ auto TestSignalGenerator::add_station( Station& station, std::span< Complex > ou
         else if ( modulation_ == Modulation::Fm )
         {
             frequency += fm_deviation_hz * audio;
+        }
+        else if ( modulation_ == Modulation::Ils )
+        {
+            // 90 and 150 Hz are the 3rd and 5th harmonics of 30 Hz, phase locked like a real ILS.
+            auto const cubed  = station.nav_tone * station.nav_tone * station.nav_tone;
+            auto const fifth  = cubed * station.nav_tone * station.nav_tone;
+            auto const ident  = station.tremolo.imag( ) > 0.5 ? station.tone.imag( ) : 0.0;
+            auto const depth  = station.settings.ils_depth;
+            auto const offset = 0.5 * station.settings.ils_ddm;
+            amplitude *= 1.0 + ( depth + offset ) * cubed.real( )
+                       + ( depth - offset ) * fifth.real( ) + vor_ident_depth * ident;
+            station.nav_tone *= station.nav_tone_step;
         }
         else
         {
