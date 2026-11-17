@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="380" viewBox="0 0 760 380" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" role="img" aria-label="ILS localizer 90 and 150 Hz signals">
+<title>ILS localizer 90 and 150 Hz signals</title>
+<rect width="760" height="380" rx="10" fill="#ffffff"/>
+<text x="30" y="32" font-size="17" font-weight="600" fill="#24292f">ILS localizer: the course is where 90 Hz and 150 Hz are equally strong</text>
+<path d="M 640 205 L 40 70 L 40 205 Z" fill="#2f81f7" fill-opacity="0.16"/>
+<path d="M 640 205 L 40 340 L 40 205 Z" fill="#e8743b" fill-opacity="0.16"/>
+<line x1="640" y1="205" x2="40" y2="70" stroke="#2f81f7" stroke-width="2"/>
+<line x1="640" y1="205" x2="40" y2="340" stroke="#e8743b" stroke-width="2"/>
+<text x="60" y="120" font-size="16" font-weight="600" fill="#2f81f7">90 Hz stronger</text>
+<text x="60" y="140" font-size="13" fill="#2f81f7">left of course</text>
+<text x="60" y="278" font-size="16" font-weight="600" fill="#e8743b">150 Hz stronger</text>
+<text x="60" y="298" font-size="13" fill="#e8743b">right of course</text>
+<line x1="40" y1="205" x2="640" y2="205" stroke="#24292f" stroke-width="2" stroke-dasharray="8 5"/>
+<text x="60" y="223" font-size="13" fill="#24292f">course (DDM = 0)</text>
+<rect x="490" y="196" width="140" height="18" rx="2" fill="#6e7781"/>
+<text x="560" y="209" font-size="11" fill="#ffffff" text-anchor="middle">runway</text>
+<rect x="640" y="183" width="8" height="44" fill="#24292f"/>
+<text x="654" y="201" font-size="12" fill="#24292f">localizer</text><text x="654" y="217" font-size="12" fill="#24292f">antenna</text>
+<polygon points="218,175 190,165 196,175 190,185" fill="#24292f"/>
+<text x="188" y="159" font-size="13" fill="#24292f">aircraft: 90 Hz &gt; 150 Hz → fly right</text>
+<text x="30" y="362" font-size="13" fill="#6e7781">Plan view, approaching from the left. The glideslope works the same way vertically: 90 Hz above the path, 150 Hz below.</text>
+</svg>

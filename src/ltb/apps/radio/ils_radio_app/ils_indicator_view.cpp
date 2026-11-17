@@ -186,13 +186,13 @@ auto IlsIndicatorView::gui_readouts( ) -> void
         auto const color = active ? highlight_color : ImGui::GetStyleColorVec4( ImGuiCol_Text );
         if ( !needle.is_fresh( now ) )
         {
-            ImGui::TextColored( color, "%s: OFF", label );
+            ImGui::TextColored( color, "%-11s OFF", label );
             return;
         }
         auto const ddm = needle.reading.ddm( );
         ImGui::TextColored(
             color,
-            "%s: DDM %+.3f (fly %s)",
+            "%-11s DDM %+.3f (fly %s)",
             label,
             ddm,
             ddm > 0.0F ? positive : negative
@@ -200,8 +200,8 @@ auto IlsIndicatorView::gui_readouts( ) -> void
     };
 
     ImGui::SeparatorText( "Deviation" );
-    readout( "Localizer ", localizer_, "right", "left", component == IlsComponent::Localizer );
-    readout( "Glideslope", glideslope_, "down", "up", component == IlsComponent::Glideslope );
+    readout( "Localizer:", localizer_, "right", "left", component == IlsComponent::Localizer );
+    readout( "Glideslope:", glideslope_, "down", "up", component == IlsComponent::Glideslope );
 
     ImGui::SeparatorText( "Tone depths" );
     auto const status = engine_.status( );
