@@ -96,20 +96,54 @@ Requirements:
   - macOS: `brew install pkg-config libusb`
   - Ubuntu: `sudo apt install pkg-config libusb-1.0-0-dev`
 
-Other dependencies (ImGui, GLFW, libhackrf, miniaudio, GoogleTest, ...) are fetched by
-[CPM](https://github.com/cpm-cmake/CPM.cmake).
+Other dependencies (ImGui, GLFW, libhackrf, miniaudio, GoogleTest, and
+[ltb-vlk](https://github.com/LoganBarnes/ltb-vlk)) are downloaded by
+[CPM](https://github.com/cpm-cmake/CPM.cmake) when CMake configures.
+
+### Build and run
+
+No submodules needed. CMake downloads ltb-vlk at the commit the `ltb-vlk` submodule pins, so
+clone with git (not a zip download) so that commit can be looked up.
 
 ```sh
-git clone --recurse-submodules https://github.com/LoganBarnes/ltb-radio.git
-cmake -S ltb-radio -B build -DLTB_RADIO_BUILD_TESTS=ON
-cmake --build build --config Release
+git clone https://github.com/LoganBarnes/ltb-radio.git
+cmake -S ltb-radio -B ltb-radio/build -DCMAKE_BUILD_TYPE=Release
+cmake --build ltb-radio/build --config Release --target radio-app
+./ltb-radio/build/src/ltb/apps/radio-app
+```
 
-./build/src/ltb/apps/Release/radio-app   # path varies by generator
-ctest --test-dir build -C Release        # unit tests
+The app path includes the configuration (e.g. `apps/Release/radio-app`) with multi-config
+generators such as Ninja Multi-Config or Xcode.
+
+### Development
+
+Turn on the tests and strict warnings (every warning is an error):
+
+```sh
+cmake -S . -B build -G "Ninja Multi-Config" \
+  -DLTB_RADIO_BUILD_TESTS=ON \
+  -DLTB_RADIO_USE_STRICT_FLAGS=ON
+cmake --build build --config Debug
+ctest --test-dir build -C Debug
 ```
 
 Signal processing is compiled with optimizations even in Debug builds so it keeps up with
-real time.
+real time. Setting `CPM_SOURCE_CACHE` (e.g. `~/.cache/CPM`) shares downloads between build
+directories.
+
+#### Editing ltb-vlk
+
+Only needed when changing [ltb-vlk](https://github.com/LoganBarnes/ltb-vlk) itself. Check out the
+submodule and point CPM at it instead of the downloaded copy:
+
+```sh
+git submodule update --init
+cmake -S . -B build -DCPM_LtbVlk_SOURCE=$PWD/ltb-vlk
+```
+
+Everyone else builds the commit the submodule pins, downloaded from GitHub. So push ltb-vlk
+changes before committing the updated submodule in this repo, or other builds will fail to find
+that commit.
 
 ## Links
 
