@@ -31,8 +31,8 @@ auto main( [[maybe_unused]] ltb::int32 const argc, char const* argv[] ) -> int
     auto glfw_window  = window::GlfwWindow{
         glfw_context,
         window::WindowSettings{
-             .title        = title,
-             .initial_size = std::nullopt,
+            .title        = title,
+            .initial_size = std::nullopt,
         },
     };
 

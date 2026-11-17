@@ -29,3 +29,7 @@ Open work, roughly in priority order within each section.
 - [ ] **Station finder.** List strong carriers in the RF Input spectrum as clickable stations.
 - [ ] **Waterfall view.** A scrolling spectrogram for spotting stations and fading over time.
 - [ ] **Morse ident decoding.** Decode the 1020 Hz ident on VOR and ILS to confirm the station.
+
+## Building
+
+- [ ] Move compiled spir-V shaders to the build directory.

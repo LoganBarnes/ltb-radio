@@ -117,10 +117,10 @@ auto ColoredMeshPipeline::initialize( ColoredMeshPipelineSettings const settings
             .vertex_attributes  = std::move( vertex_attributes ),
             .primitive_topology = settings.topology,
             .rasterizer         = vk::PipelineRasterizationStateCreateInfo{ }
-                              .setPolygonMode( vk::PolygonMode::eFill )
-                              .setLineWidth( 1.0F )
-                              .setCullMode( vk::CullModeFlagBits::eBack )
-                              .setFrontFace( vk::FrontFace::eCounterClockwise ),
+                                      .setPolygonMode( vk::PolygonMode::eFill )
+                                      .setLineWidth( 1.0F )
+                                      .setCullMode( vk::CullModeFlagBits::eBack )
+                                      .setFrontFace( vk::FrontFace::eCounterClockwise ),
         },
     } ) );
     LTB_CHECK_VALID( 1UZ == pipeline_.descriptor_sets( ).size( ) );
@@ -178,10 +178,10 @@ auto ColoredMeshPipeline::initialize_mesh(
     auto& new_mesh = meshes_.emplace_back( gpu_ );
 
     LTB_CHECK( new_mesh.buffer.initialize( {
-        .layout       = std::move( vbo_layout ),
-        .buffer_usage = vk::BufferUsageFlagBits::eVertexBuffer
-                      | vk::BufferUsageFlagBits::eIndexBuffer
-                      | vk::BufferUsageFlagBits::eTransferDst,
+        .layout             = std::move( vbo_layout ),
+        .buffer_usage       = vk::BufferUsageFlagBits::eVertexBuffer
+                            | vk::BufferUsageFlagBits::eIndexBuffer
+                            | vk::BufferUsageFlagBits::eTransferDst,
         .memory_properties  = vk::MemoryPropertyFlagBits::eDeviceLocal,
         .store_mapped_value = false,
     } ) );
