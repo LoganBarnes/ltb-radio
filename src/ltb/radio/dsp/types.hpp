@@ -1,0 +1,23 @@
+// ///////////////////////////////////////////////////////////////////////////////////////
+// A Logan Thomas Barnes project
+// ///////////////////////////////////////////////////////////////////////////////////////
+#pragma once
+
+// project
+#include "ltb/utils/types.hpp"
+
+// standard
+#include <complex>
+
+namespace ltb::radio::dsp
+{
+
+using Complex = std::complex< float32 >;
+
+enum class Modulation
+{
+    Am,
+    Fm,
+};
+
+} // namespace ltb::radio::dsp

@@ -46,6 +46,65 @@ cpmaddpackage(
   SOURCE_SUBDIR host
 )
 
+# Audio output
+cpmaddpackage(
+  NAME
+  miniaudio
+  GITHUB_REPOSITORY
+  mackron/miniaudio
+  GIT_TAG
+  0.11.24
+  DOWNLOAD_ONLY
+  YES
+)
+
+if ( miniaudio_ADDED )
+  # Built separately so the project's strict flags don't apply to it.
+  add_library(
+    miniaudio
+    STATIC
+    ${miniaudio_SOURCE_DIR}/miniaudio.c
+  )
+  add_library(
+    miniaudio::miniaudio
+    ALIAS
+    miniaudio
+  )
+  target_include_directories(
+    miniaudio
+    SYSTEM
+    PUBLIC
+    $<BUILD_INTERFACE:${miniaudio_SOURCE_DIR}>
+  )
+  target_compile_definitions(
+    miniaudio
+    PUBLIC
+    MA_NO_DECODING
+    MA_NO_ENCODING
+    MA_NO_GENERATION
+    MA_NO_RESOURCE_MANAGER
+    MA_NO_NODE_GRAPH
+    MA_NO_ENGINE
+  )
+  if ( APPLE )
+    target_link_libraries(
+      miniaudio
+      PUBLIC
+      "-framework CoreFoundation"
+      "-framework CoreAudio"
+      "-framework AudioToolbox"
+    )
+  elseif ( UNIX )
+    target_link_libraries(
+      miniaudio
+      PUBLIC
+      pthread
+      m
+      dl
+    )
+  endif ()
+endif ()
+
 if (${LTB_RADIO_BUILD_TESTS})
   cpmaddpackage(
     NAME

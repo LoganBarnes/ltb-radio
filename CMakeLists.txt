@@ -18,6 +18,11 @@ option(
   "Use strict flags when building"
   OFF
 )
+option(
+  LTB_RADIO_BUILD_TESTS
+  "Build the unit tests"
+  OFF
+)
 
 # ##############################################################################
 # CMake Package Manager
@@ -58,6 +63,22 @@ add_library(
   LtbRadio
   ${LtbRadio_CORE_SOURCE_FILES}
 )
+
+# Signal processing must keep up with real time, so it is optimized even in debug builds.
+file(
+  GLOB_RECURSE
+  LtbRadio_DSP_SOURCE_FILES
+  LIST_DIRECTORIES
+  false
+  CONFIGURE_DEPENDS
+  ${CMAKE_CURRENT_LIST_DIR}/src/ltb/radio/dsp/*.cpp
+)
+set_source_files_properties(
+  ${LtbRadio_DSP_SOURCE_FILES}
+  PROPERTIES
+  COMPILE_OPTIONS
+  $<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:CXX,GNU,Clang,AppleClang>>:-O2>
+)
 add_library(
   LtbRadio::LtbRadio
   ALIAS
@@ -72,6 +93,8 @@ target_link_libraries(
   LtbVlk::LtbVlk
   # Radio
   HackRF::hackrf
+  # Audio
+  miniaudio::miniaudio
 )
 target_include_directories(
   LtbRadio
@@ -147,3 +170,10 @@ endif ()
 # Applications
 # ##############################################################################
 add_subdirectory( ${CMAKE_CURRENT_LIST_DIR}/src/ltb/apps )
+
+# ##############################################################################
+# Tests
+# ##############################################################################
+if ( LTB_RADIO_BUILD_TESTS )
+  add_subdirectory( ${CMAKE_CURRENT_LIST_DIR}/tests )
+endif ()

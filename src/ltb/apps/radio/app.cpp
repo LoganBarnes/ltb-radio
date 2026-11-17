@@ -4,6 +4,8 @@
 #include "app.hpp"
 
 // project
+#include "am_radio_app/am_radio_app.hpp"
+#include "fm_radio_app/fm_radio_app.hpp"
 #include "hackrf_app/hackrf_app.hpp"
 #include "ltb/exec/app_defaults.hpp"
 #include "ltb/radio/user_config.hpp"
@@ -35,6 +37,8 @@ RadioApp::RadioApp( window::GlfwContext& glfw_context, window::GlfwWindow& glfw_
     , glfw_window_( glfw_window )
 {
     sub_app_entries_.push_back( { .name = "HackRF", .create = &make_sub_app< HackrfApp > } );
+    sub_app_entries_.push_back( { .name = "AM Radio", .create = &make_sub_app< AmRadioApp > } );
+    sub_app_entries_.push_back( { .name = "FM Radio", .create = &make_sub_app< FmRadioApp > } );
     sub_app_entries_.push_back( { .name = "Test App", .create = &make_sub_app< TestApp > } );
 
     // The first entry is the default app.
