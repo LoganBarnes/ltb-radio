@@ -33,3 +33,8 @@ Open work, roughly in priority order within each section.
 ## Building
 
 - [ ] Move compiled spir-V shaders to the build directory.
+
+## Testing
+
+- [ ] **Mock HackRF.** Create interfaces around objects that can faile like HackrfReceiver 
+      (for example) so that we can test the rest of the code without needing a HackRF device.
