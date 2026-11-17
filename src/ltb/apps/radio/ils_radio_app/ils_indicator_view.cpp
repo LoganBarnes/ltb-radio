@@ -222,11 +222,13 @@ auto IlsIndicatorView::gui_instrument( ) const -> void
 {
     auto const available = ImGui::GetContentRegionAvail( );
     auto const size      = std::max( std::min( available.x, available.y ), 50.0F );
-    auto const top_left  = ImGui::GetCursorScreenPos( );
-    auto const center    = ImVec2( top_left.x + 0.5F * available.x, top_left.y + 0.5F * size );
-    auto const radius    = 0.5F * size - 4.0F;
-    auto const half      = radius * 0.7F;
-    ImGui::Dummy( ImVec2( available.x, size ) );
+    // The content region can be empty (e.g. a docked window's first frame).
+    auto const width    = std::max( available.x, size );
+    auto const top_left = ImGui::GetCursorScreenPos( );
+    auto const center   = ImVec2( top_left.x + 0.5F * width, top_left.y + 0.5F * size );
+    auto const radius   = 0.5F * size - 4.0F;
+    auto const half     = radius * 0.7F;
+    ImGui::Dummy( ImVec2( width, size ) );
 
     auto* const draw_list = ImGui::GetWindowDrawList( );
     draw_list->AddCircleFilled( center, radius, face_color, 96 );

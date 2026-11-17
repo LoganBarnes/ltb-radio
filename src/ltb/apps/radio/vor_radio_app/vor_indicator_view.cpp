@@ -145,11 +145,13 @@ auto VorIndicatorView::gui_instrument( dsp::VorReading const& reading, bool cons
 {
     auto const available = ImGui::GetContentRegionAvail( );
     auto const size      = std::max( std::min( available.x, available.y ), 50.0F );
-    auto const top_left  = ImGui::GetCursorScreenPos( );
-    auto const center    = ImVec2( top_left.x + 0.5F * available.x, top_left.y + 0.5F * size );
-    auto const radius    = 0.5F * size - 4.0F;
+    // The content region can be empty (e.g. a docked window's first frame).
+    auto const width    = std::max( available.x, size );
+    auto const top_left = ImGui::GetCursorScreenPos( );
+    auto const center   = ImVec2( top_left.x + 0.5F * width, top_left.y + 0.5F * size );
+    auto const radius   = 0.5F * size - 4.0F;
 
-    ImGui::InvisibleButton( "##instrument", ImVec2( available.x, size ) );
+    ImGui::InvisibleButton( "##instrument", ImVec2( width, size ) );
 
     // Turn the card by dragging around the center, or with the scroll wheel.
     auto const& io = ImGui::GetIO( );
