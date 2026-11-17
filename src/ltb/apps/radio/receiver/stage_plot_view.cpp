@@ -102,6 +102,43 @@ struct PlotRange
     }
 };
 
+struct RealPart
+{
+    auto operator( )( dsp::Complex const& sample ) const -> float32
+    {
+        return sample.real( );
+    }
+};
+
+struct ImagPart
+{
+    auto operator( )( dsp::Complex const& sample ) const -> float32
+    {
+        return sample.imag( );
+    }
+};
+
+struct Magnitude
+{
+    auto operator( )( dsp::Complex const& sample ) const -> float32
+    {
+        return std::abs( sample );
+    }
+};
+
+// A sample's index in milliseconds paired with its value.
+template < typename Value >
+struct TimePoint
+{
+    float32 ms_per_sample;
+    Value   value;
+
+    auto operator( )( std::size_t const index, dsp::Complex const& sample ) const -> glm::vec2
+    {
+        return { static_cast< float32 >( index ) * ms_per_sample, value( sample ) };
+    }
+};
+
 } // namespace
 
 StagePlotView::StagePlotView( RadioEngine& engine, std::size_t const stage, std::string name )
@@ -296,25 +333,23 @@ auto StagePlotView::update_spectrum( ) -> void
         return;
     }
 
-    auto latest = std::vector< float32 >( );
     if ( this->is_complex( ) )
     {
-        dsp::power_spectrum_db( samples_, latest );
+        analyzer_.power_spectrum_db( samples_, latest_ );
     }
     else
     {
-        auto const real = samples_
-                        | std::views::transform( []( dsp::Complex const& s ) { return s.real( ); } )
-                        | std::ranges::to< std::vector >( );
-        dsp::power_spectrum_db( real, latest );
+        real_.resize( samples_.size( ) );
+        std::ranges::transform( samples_, real_.begin( ), RealPart{ } );
+        analyzer_.power_spectrum_db( real_, latest_ );
     }
 
-    if ( spectrum_.size( ) != latest.size( ) )
+    if ( spectrum_.size( ) != latest_.size( ) )
     {
-        spectrum_ = std::move( latest );
+        spectrum_ = latest_;
         return;
     }
-    for ( auto&& [ average, value ] : std::views::zip( spectrum_, latest ) )
+    for ( auto&& [ average, value ] : std::views::zip( spectrum_, latest_ ) )
     {
         average = averaging_ * average + ( 1.0F - averaging_ ) * value;
     }
@@ -344,39 +379,45 @@ auto StagePlotView::build_traces( ) -> void
         return;
     }
 
-    auto const time_ms = [ rate ]( std::size_t const i ) {
-        return static_cast< float32 >( i ) * ms_per_second / rate;
-    };
-
-    auto add_trace
-        = [ & ]( bool const shown, glm::vec4 const& color, char const* const label, auto&& value ) {
-              if ( !shown )
-              {
-                  return;
-              }
-              auto trace = Trace{ .points = { }, .color = color, .label = label };
-              trace.points.reserve( samples_.size( ) );
-              for ( auto i = 0UZ; i < samples_.size( ); ++i )
-              {
-                  trace.points.emplace_back( time_ms( i ), value( samples_[ i ] ) );
-              }
-              traces_.push_back( std::move( trace ) );
-          };
-
+    auto const ms_per_sample = ms_per_second / rate;
     if ( this->is_complex( ) )
     {
-        add_trace( show_magnitude_, magnitude_color, "|x|", []( dsp::Complex const& s ) {
-            return std::abs( s );
-        } );
-        add_trace( show_q_, q_color, "Q", []( dsp::Complex const& s ) { return s.imag( ); } );
-        add_trace( show_i_, i_color, "I", []( dsp::Complex const& s ) { return s.real( ); } );
+        this->add_trace(
+            show_magnitude_,
+            magnitude_color,
+            "|x|",
+            TimePoint{ ms_per_sample, Magnitude{ } }
+        );
+        this->add_trace( show_q_, q_color, "Q", TimePoint{ ms_per_sample, ImagPart{ } } );
+        this->add_trace( show_i_, i_color, "I", TimePoint{ ms_per_sample, RealPart{ } } );
     }
     else
     {
-        add_trace( true, magnitude_color, "Value", []( dsp::Complex const& s ) {
-            return s.real( );
-        } );
+        this->add_trace( true, magnitude_color, "Value", TimePoint{ ms_per_sample, RealPart{ } } );
     }
+}
+
+template < typename ToPoint >
+auto StagePlotView::add_trace(
+    bool const        shown,
+    glm::vec4 const&  color,
+    char const* const label,
+    ToPoint const&    to_point
+) -> void
+{
+    if ( !shown )
+    {
+        return;
+    }
+    auto trace = Trace{ .points = { }, .color = color, .label = label };
+    trace.points.reserve( samples_.size( ) );
+    std::ranges::transform(
+        std::views::iota( 0UZ, samples_.size( ) ),
+        samples_,
+        std::back_inserter( trace.points ),
+        to_point
+    );
+    traces_.push_back( std::move( trace ) );
 }
 
 auto StagePlotView::fit( bool const x_axis ) -> bool
@@ -467,8 +508,6 @@ auto StagePlotView::draw_overlay( ) const -> void
         nice_step( ( max.x - min.x ) * tick_target_px / size.x ),
         nice_step( ( max.y - min.y ) * tick_target_px * 0.6F / size.y )
     );
-    auto const to_screen
-        = [ & ]( glm::vec2 const plot ) { return origin + camera_.screen_from_plot( plot, size ); };
 
     if ( mode_ == Mode::Spectrum && this->is_rf( ) )
     {
@@ -477,7 +516,7 @@ auto StagePlotView::draw_overlay( ) const -> void
 
     for ( auto x = std::ceil( min.x / step.x ) * step.x; x <= max.x; x += step.x )
     {
-        auto const top = to_screen( { x, max.y } );
+        auto const top = origin + camera_.screen_from_plot( { x, max.y }, size );
         draw_list->AddLine( to_imvec( top ), ImVec2( top.x, top.y + size.y ), grid_color );
         draw_list->AddText(
             ImVec2( top.x + 3.0F, origin.y + size.y - ImGui::GetFontSize( ) - 2.0F ),
@@ -487,7 +526,7 @@ auto StagePlotView::draw_overlay( ) const -> void
     }
     for ( auto y = std::ceil( min.y / step.y ) * step.y; y <= max.y; y += step.y )
     {
-        auto const left  = to_screen( { min.x, y } );
+        auto const left  = origin + camera_.screen_from_plot( { min.x, y }, size );
         auto const color = std::abs( y ) < 0.5F * step.y ? axis_color : grid_color;
         draw_list->AddLine( to_imvec( left ), ImVec2( left.x + size.x, left.y ), color );
 

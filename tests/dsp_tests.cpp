@@ -212,6 +212,65 @@ TEST( FmDiscriminator, OutputIsFrequencyOverDeviation )
     }
 }
 
+auto sine( float64 const frequency_hz, float32 const amplitude, std::size_t const count )
+    -> std::vector< float32 >
+{
+    constexpr auto fs = RadioPipeline::audio_rate_hz;
+
+    auto samples = std::vector< float32 >( count );
+    for ( auto i = 0UZ; i < count; ++i )
+    {
+        samples[ i ] = amplitude
+                     * static_cast< float32 >(
+                           std::sin( 2.0 * pi * frequency_hz * static_cast< float64 >( i ) / fs )
+                     );
+    }
+    return samples;
+}
+
+struct AbsoluteValue
+{
+    auto operator( )( float32 const value ) const -> float32
+    {
+        return std::abs( value );
+    }
+};
+
+auto peak( std::span< float32 const > const samples ) -> float32
+{
+    return std::ranges::max( samples | std::views::transform( AbsoluteValue{ } ) );
+}
+
+TEST( Agc, BringsQuietAndLoudSignalsToTheTarget )
+{
+    for ( auto const amplitude : { 0.01F, 2.0F } )
+    {
+        auto agc = Agc( );
+        agc.configure( RadioPipeline::audio_rate_hz );
+
+        auto samples = sine( 1'000.0, amplitude, 96'000UZ ); // 2 seconds
+        agc.process( samples );
+
+        EXPECT_NEAR( peak( std::span( samples ).last( 4'800UZ ) ), 0.5F, 0.05F ) << amplitude;
+    }
+}
+
+TEST( DcBlocker, RemovesAnOffsetAndPassesAudio )
+{
+    auto blocker = DcBlocker( );
+    blocker.configure( 30.0, RadioPipeline::audio_rate_hz );
+
+    auto samples = sine( 1'000.0, 0.2F, 48'000UZ );
+    std::ranges::transform( samples, samples.begin( ), std::bind_front( std::plus<>{ }, 0.7F ) );
+    blocker.process( samples );
+
+    auto const last = std::span( samples ).last( 4'800UZ ); // 100 cycles
+    auto const mean
+        = std::reduce( last.begin( ), last.end( ), 0.0F ) / static_cast< float32 >( last.size( ) );
+    EXPECT_NEAR( mean, 0.0F, 0.005F );
+    EXPECT_NEAR( peak( last ), 0.2F, 0.01F );
+}
+
 TEST( RadioPipeline, AmRecoversTheTunedStationsTone )
 {
     // The receiver is centered at 0 Hz. The tuned station is 20 kHz from a stronger neighbor.
@@ -346,7 +405,8 @@ TEST( RadioPipeline, ReportsEveryStage )
         }
     };
 
-    for ( auto const modulation : { Modulation::Am, Modulation::Fm, Modulation::Vor } )
+    for ( auto const modulation :
+          { Modulation::Am, Modulation::Fm, Modulation::Vor, Modulation::Ils } )
     {
         auto const stages   = RadioPipeline::stage_infos( modulation );
         auto       pipeline = RadioPipeline( modulation, { } );
@@ -366,6 +426,62 @@ TEST( RadioPipeline, ReportsEveryStage )
             ) << stages[ i ].name;
         }
     }
+}
+
+TEST( RadioPipeline, BandwidthChangesOnlyResetTheChannelFilter )
+{
+    // Records the output of the two fixed decimation stages.
+    struct DecimationObserver : StageObserver
+    {
+        std::vector< Complex > first  = { };
+        std::vector< Complex > second = { };
+
+        auto on_stage_output( std::size_t const stage, std::span< Complex const > const samples )
+            -> void override
+        {
+            if ( stage == 2UZ )
+            {
+                first.insert( first.end( ), samples.begin( ), samples.end( ) );
+            }
+            else if ( stage == 3UZ )
+            {
+                second.insert( second.end( ), samples.begin( ), samples.end( ) );
+            }
+        }
+
+        auto on_stage_output( std::size_t /*stage*/, std::span< float32 const > /*samples*/ )
+            -> void override
+        {
+        }
+    };
+
+    auto const settings = PipelineSettings{ .shift_hz = 250.0e3, .channel_bandwidth_hz = 10.0e3 };
+    auto       steady   = RadioPipeline( Modulation::Am, settings );
+    auto       retuned  = RadioPipeline( Modulation::Am, settings );
+
+    auto generator = TestSignalGenerator(
+        Modulation::Am,
+        RadioPipeline::input_rate_hz,
+        { { .frequency_hz = 250.0e3, .level = 0.1F, .tone_hz = 1'000.0 } },
+        0.001F
+    );
+    auto steady_observer  = DecimationObserver( );
+    auto retuned_observer = DecimationObserver( );
+    auto block            = std::vector< Complex >( 24'000UZ );
+    auto audio            = std::vector< float32 >( );
+    for ( auto i = 0; i < 10; ++i )
+    {
+        if ( i == 5 )
+        {
+            retuned.configure( { .shift_hz = 250.0e3, .channel_bandwidth_hz = 20.0e3 } );
+        }
+        generator.generate( block );
+        steady.process( block, audio, &steady_observer );
+        retuned.process( block, audio, &retuned_observer );
+    }
+
+    EXPECT_EQ( retuned_observer.first, steady_observer.first );
+    EXPECT_EQ( retuned_observer.second, steady_observer.second );
 }
 
 } // namespace

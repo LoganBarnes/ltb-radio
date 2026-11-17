@@ -94,7 +94,8 @@ public:
     [[nodiscard( "Pure computation" )]]
     static auto bandwidth_limits( Modulation modulation ) -> std::pair< float64, float64 >;
 
-    // Filters are redesigned (and their state reset) only when the bandwidth changes.
+    // Only the filters that depend on the channel bandwidth are redesigned (resetting their
+    // state), and only when the bandwidth changes.
     auto configure( PipelineSettings settings ) -> void;
 
     [[nodiscard( "Const getter" )]]
@@ -147,7 +148,7 @@ private:
     float32 channel_power_db_ = -200.0F;
     bool    squelch_open_     = true;
 
-    auto design_filters( ) -> void;
+    auto design_channel_filters( ) -> void;
     auto process_am( StageObserver* observer ) -> void;
     auto process_fm( StageObserver* observer ) -> void;
     auto process_vor( StageObserver* observer ) -> void;

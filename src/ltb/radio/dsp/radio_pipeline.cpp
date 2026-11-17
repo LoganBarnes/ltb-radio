@@ -49,12 +49,34 @@ auto observe(
 
 RadioPipeline::RadioPipeline( Modulation const modulation, PipelineSettings settings )
     : modulation_( modulation )
-    // An invalid bandwidth makes `configure` design the filters.
+    // An invalid bandwidth makes `configure` design the channel filters.
     , settings_{ .channel_bandwidth_hz = 0.0 }
 {
     discriminator_.configure( fm_max_deviation_hz, input_rate_hz / 10.0 );
     dc_blocker_.configure( am_dc_cutoff_hz, audio_rate_hz );
     agc_.configure( audio_rate_hz );
+
+    // Filters that don't depend on the channel bandwidth.
+    if ( modulation_ == Modulation::Fm )
+    {
+        audio_filter_ = {
+            design_low_pass(
+                0.5 * ( fm_audio_passband_hz + fm_audio_stopband_hz ),
+                fm_audio_stopband_hz - fm_audio_passband_hz,
+                input_rate_hz / 10.0
+            ),
+            5UZ,
+        };
+    }
+    else
+    {
+        decimate_1_
+            = { design_decimation_filter( am_intermediate_passband_hz, input_rate_hz, 5UZ ), 5UZ };
+        decimate_2_
+            = { design_decimation_filter( am_intermediate_passband_hz, input_rate_hz / 5.0, 5UZ ),
+                5UZ };
+    }
+
     this->configure( settings );
 }
 
@@ -266,7 +288,7 @@ auto RadioPipeline::configure( PipelineSettings settings ) -> void
 
     if ( bandwidth_changed )
     {
-        this->design_filters( );
+        this->design_channel_filters( );
     }
 }
 
@@ -360,27 +382,11 @@ auto RadioPipeline::update_squelch( ) -> void
     squelch_open_ = !settings_.squelch_enabled || channel_power_db_ > threshold;
 }
 
-auto RadioPipeline::design_filters( ) -> void
+auto RadioPipeline::design_channel_filters( ) -> void
 {
     auto const half_bandwidth = 0.5 * settings_.channel_bandwidth_hz;
 
-    if ( modulation_ != Modulation::Fm )
-    {
-        decimate_1_
-            = { design_decimation_filter( am_intermediate_passband_hz, input_rate_hz, 5UZ ), 5UZ };
-        decimate_2_
-            = { design_decimation_filter( am_intermediate_passband_hz, input_rate_hz / 5.0, 5UZ ),
-                5UZ };
-        channel_filter_ = {
-            design_low_pass(
-                half_bandwidth + 0.5 * am_channel_transition_hz,
-                am_channel_transition_hz,
-                input_rate_hz / 25.0
-            ),
-            2UZ,
-        };
-    }
-    else
+    if ( modulation_ == Modulation::Fm )
     {
         decimate_1_     = { design_decimation_filter( half_bandwidth, input_rate_hz, 5UZ ), 5UZ };
         channel_filter_ = {
@@ -391,13 +397,16 @@ auto RadioPipeline::design_filters( ) -> void
             ),
             2UZ,
         };
-        audio_filter_ = {
+    }
+    else
+    {
+        channel_filter_ = {
             design_low_pass(
-                0.5 * ( fm_audio_passband_hz + fm_audio_stopband_hz ),
-                fm_audio_stopband_hz - fm_audio_passband_hz,
-                input_rate_hz / 10.0
+                half_bandwidth + 0.5 * am_channel_transition_hz,
+                am_channel_transition_hz,
+                input_rate_hz / 25.0
             ),
-            5UZ,
+            2UZ,
         };
     }
 }

@@ -43,13 +43,8 @@ struct AudioCallback
         auto const samples = std::span( static_cast< float32* >( output ), frame_count );
         auto&      self    = *static_cast< AudioOutput::Device* >( device->pUserData );
 
-        if ( self.priming && self.source->size( ) < self.prime_samples )
-        {
-            std::ranges::fill( samples, 0.0F );
-            return;
-        }
-
-        auto const count = self.source->pop( samples );
+        auto const minimum = self.priming ? self.prime_samples : 0UZ;
+        auto const count   = self.source->pop_if_available( samples, minimum );
         std::ranges::fill( samples.subspan( count ), 0.0F );
         self.priming = count < samples.size( );
     }

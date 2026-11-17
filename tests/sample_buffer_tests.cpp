@@ -51,6 +51,22 @@ TEST( SampleRingBuffer, PopTimesOutWhenEmpty )
     EXPECT_EQ( buffer.pop( std::span( output ), std::chrono::milliseconds( 1 ) ), 0UZ );
 }
 
+TEST( SampleRingBuffer, PopIfAvailableWaitsForTheMinimum )
+{
+    auto buffer = SampleRingBuffer< int >( 8UZ );
+    auto output = std::array< int, 2 >{ };
+
+    buffer.push( std::array{ 1, 2 } );
+    EXPECT_EQ( buffer.pop_if_available( std::span( output ), 3UZ ), 0UZ );
+    EXPECT_EQ( buffer.size( ), 2UZ );
+
+    // Once the minimum is reached, pops as many as fit (like `pop`).
+    buffer.push( std::array{ 3 } );
+    ASSERT_EQ( buffer.pop_if_available( std::span( output ), 3UZ ), 2UZ );
+    EXPECT_EQ( output, ( std::array{ 1, 2 } ) );
+    EXPECT_EQ( buffer.size( ), 1UZ );
+}
+
 TEST( SampleHistory, CopiesTheNewestSamplesOldestFirst )
 {
     auto history = SampleHistory( 4UZ );

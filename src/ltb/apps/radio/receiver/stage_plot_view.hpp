@@ -5,6 +5,7 @@
 
 // project
 #include "ltb/apps/radio/app_view.hpp"
+#include "ltb/radio/dsp/fft.hpp"
 #include "ltb/radio/imgui_viewport.hpp"
 #include "ltb/radio/plot_camera.hpp"
 #include "ltb/radio/plot_line_pipeline.hpp"
@@ -71,6 +72,9 @@ private:
     uint64  data_version_   = std::numeric_limits< uint64 >::max( );
 
     std::vector< dsp::Complex > samples_  = { };
+    dsp::SpectrumAnalyzer       analyzer_ = { };
+    std::vector< float32 >      real_     = { }; // Real stages' samples for the analyzer.
+    std::vector< float32 >      latest_   = { }; // The newest (unaveraged) spectrum.
     std::vector< float32 >      spectrum_ = { };
     std::vector< Trace >        traces_   = { };
 
@@ -85,6 +89,12 @@ private:
     auto update_data( ) -> void;
     auto update_spectrum( ) -> void;
     auto build_traces( ) -> void;
+
+    // Adds a time-domain trace of `samples_` (if shown). `to_point` maps an index and sample to
+    // a plot point.
+    template < typename ToPoint >
+    auto add_trace( bool shown, glm::vec4 const& color, char const* label, ToPoint const& to_point )
+        -> void;
     // Returns false if there is no data to fit yet.
     auto fit( bool x_axis ) -> bool;
     auto handle_input( ) -> void;

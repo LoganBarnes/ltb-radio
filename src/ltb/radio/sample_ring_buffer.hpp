@@ -76,6 +76,14 @@ public:
         return this->pop_locked( output );
     }
 
+    // As above, but copies nothing (and returns 0) unless at least `minimum` samples are
+    // available. Takes the lock once, for callers on a real-time thread.
+    auto pop_if_available( std::span< Sample > output, std::size_t const minimum ) -> std::size_t
+    {
+        auto const lock = std::scoped_lock( mutex_ );
+        return size_ < minimum ? 0UZ : this->pop_locked( output );
+    }
+
     [[nodiscard( "Const getter" )]]
     auto size( ) const -> std::size_t
     {

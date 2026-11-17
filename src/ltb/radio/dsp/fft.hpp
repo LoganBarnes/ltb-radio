@@ -27,4 +27,24 @@ auto power_spectrum_db( std::span< Complex const > samples, std::vector< float32
 auto power_spectrum_db( std::span< float32 const > samples, std::vector< float32 >& output )
     -> void;
 
+// Computes the power spectra above, reusing its buffers and window between calls so it can run
+// every frame without allocating.
+class SpectrumAnalyzer
+{
+public:
+    auto power_spectrum_db( std::span< Complex const > samples, std::vector< float32 >& output )
+        -> void;
+    auto power_spectrum_db( std::span< float32 const > samples, std::vector< float32 >& output )
+        -> void;
+
+private:
+    std::vector< Complex > spectrum_   = { };
+    std::vector< float32 > window_     = { };
+    float32                window_sum_ = 0.0F;
+
+    // Windows the samples into `spectrum_` and transforms them.
+    template < typename Sample >
+    auto windowed_fft( std::span< Sample const > samples ) -> void;
+};
+
 } // namespace ltb::radio::dsp

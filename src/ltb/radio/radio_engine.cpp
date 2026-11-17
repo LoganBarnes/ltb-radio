@@ -11,6 +11,7 @@
 
 // standard
 #include <chrono>
+#include <functional>
 #include <ranges>
 
 namespace ltb::radio
@@ -31,6 +32,30 @@ constexpr auto load_smoothing       = 0.1F;
 auto samples_for( float64 const seconds, float64 const rate_hz ) -> std::size_t
 {
     return static_cast< std::size_t >( seconds * rate_hz );
+}
+
+// Sends a changed value to the hardware. If the device rejects it, the old value is restored so
+// the settings keep describing the hardware, and the first error is kept in `result`.
+template < typename Value, typename Setter >
+auto update_hardware(
+    Value&                 value,
+    Value const&           old,
+    Setter const&          set,
+    utils::Result< void >& result
+) -> void
+{
+    if ( value == old )
+    {
+        return;
+    }
+    if ( auto set_result = set( value ); !set_result )
+    {
+        value = old;
+        if ( result )
+        {
+            result = std::move( set_result );
+        }
+    }
 }
 
 struct MakeHistory
@@ -208,18 +233,23 @@ auto RadioEngine::apply( RadioSettings settings ) -> utils::Result< void >
         return utils::success( );
     }
 
-    if ( old.source != settings_.source || old.hackrf_serial != settings_.hackrf_serial )
+    auto const device_changed
+        = settings_.source == SourceType::Hackrf && old.hackrf_serial != settings_.hackrf_serial;
+    if ( old.source != settings_.source || device_changed )
     {
         this->stop( );
         return this->start( );
     }
+
+    // First, so the pipeline's shift uses the frequency the hardware is actually tuned to.
+    auto result = this->apply_hardware( old );
 
     test_center_frequency_hz_ = settings_.center_frequency_hz;
     {
         auto const lock   = std::scoped_lock( pending_mutex_ );
         pending_pipeline_ = this->pipeline_settings( );
     }
-    return this->apply_hardware( old );
+    return result;
 }
 
 auto RadioEngine::modulation( ) const -> dsp::Modulation
@@ -279,27 +309,38 @@ auto RadioEngine::pipeline_settings( ) const -> dsp::PipelineSettings
 
 auto RadioEngine::apply_hardware( RadioSettings const& old ) -> utils::Result< void >
 {
+    auto result = utils::success( );
     if ( !hackrf_ )
     {
-        return utils::success( );
+        return result;
     }
-    if ( old.center_frequency_hz != settings_.center_frequency_hz )
-    {
-        LTB_CHECK( hackrf_->set_center_frequency( settings_.center_frequency_hz ) );
-    }
-    if ( old.lna_gain_db != settings_.lna_gain_db )
-    {
-        LTB_CHECK( hackrf_->set_lna_gain( settings_.lna_gain_db ) );
-    }
-    if ( old.vga_gain_db != settings_.vga_gain_db )
-    {
-        LTB_CHECK( hackrf_->set_vga_gain( settings_.vga_gain_db ) );
-    }
-    if ( old.amp_enabled != settings_.amp_enabled )
-    {
-        LTB_CHECK( hackrf_->set_amp_enabled( settings_.amp_enabled ) );
-    }
-    return utils::success( );
+
+    auto* const hackrf = hackrf_.get( );
+    update_hardware(
+        settings_.center_frequency_hz,
+        old.center_frequency_hz,
+        std::bind_front( &HackrfReceiver::set_center_frequency, hackrf ),
+        result
+    );
+    update_hardware(
+        settings_.lna_gain_db,
+        old.lna_gain_db,
+        std::bind_front( &HackrfReceiver::set_lna_gain, hackrf ),
+        result
+    );
+    update_hardware(
+        settings_.vga_gain_db,
+        old.vga_gain_db,
+        std::bind_front( &HackrfReceiver::set_vga_gain, hackrf ),
+        result
+    );
+    update_hardware(
+        settings_.amp_enabled,
+        old.amp_enabled,
+        std::bind_front( &HackrfReceiver::set_amp_enabled, hackrf ),
+        result
+    );
+    return result;
 }
 
 auto RadioEngine::run_worker( std::stop_token const& stop ) -> void

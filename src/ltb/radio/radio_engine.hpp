@@ -93,7 +93,9 @@ public:
     [[nodiscard( "Const getter" )]]
     auto settings( ) const -> RadioSettings const&;
 
-    // Takes effect immediately while running. Changing the source restarts the radio.
+    // Takes effect immediately while running. Changing the source (or the HackRF device)
+    // restarts the radio. Hardware settings the device rejects keep their old values, and the
+    // first rejection is returned.
     auto apply( RadioSettings settings ) -> utils::Result< void >;
 
     [[nodiscard( "Const getter" )]]

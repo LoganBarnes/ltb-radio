@@ -8,6 +8,7 @@
 #include <bit>
 #include <cassert>
 #include <cmath>
+#include <functional>
 #include <numbers>
 #include <numeric>
 #include <ranges>
@@ -35,23 +36,14 @@ auto hann( std::size_t const i, std::size_t const size ) -> float32
     return static_cast< float32 >( 0.5 - 0.5 * std::cos( phase ) );
 }
 
-// Windows the samples and returns the sum of the window (the gain of a tone at a bin center).
 template < typename Sample >
-auto windowed_fft( std::span< Sample const > samples, std::vector< Complex >& spectrum ) -> float32
+struct ApplyWindow
 {
-    auto const size = samples.size( );
-    spectrum.resize( size );
-
-    auto window_sum = 0.0F;
-    for ( auto i = 0UZ; i < size; ++i )
+    auto operator( )( Sample const& sample, float32 const weight ) const -> Complex
     {
-        auto const w  = hann( i, size );
-        spectrum[ i ] = Complex( samples[ i ] ) * w;
-        window_sum += w;
+        return Complex( sample ) * weight;
     }
-    fft( spectrum );
-    return window_sum;
-}
+};
 
 struct ToDecibels
 {
@@ -107,28 +99,59 @@ auto fft( std::span< Complex > data ) -> void
 
 auto power_spectrum_db( std::span< Complex const > samples, std::vector< float32 >& output ) -> void
 {
-    auto       spectrum   = std::vector< Complex >( );
-    auto const window_sum = windowed_fft( samples, spectrum );
-
-    // Move DC to the middle.
-    std::ranges::rotate(
-        spectrum,
-        spectrum.begin( ) + static_cast< std::ptrdiff_t >( spectrum.size( ) / 2UZ )
-    );
-
-    output.resize( spectrum.size( ) );
-    std::ranges::transform( spectrum, output.begin( ), ToDecibels{ window_sum } );
+    SpectrumAnalyzer( ).power_spectrum_db( samples, output );
 }
 
 auto power_spectrum_db( std::span< float32 const > samples, std::vector< float32 >& output ) -> void
 {
-    auto       spectrum   = std::vector< Complex >( );
-    auto const window_sum = windowed_fft( samples, spectrum );
+    SpectrumAnalyzer( ).power_spectrum_db( samples, output );
+}
+
+auto SpectrumAnalyzer::power_spectrum_db(
+    std::span< Complex const > samples,
+    std::vector< float32 >&    output
+) -> void
+{
+    this->windowed_fft( samples );
+
+    // Move DC to the middle.
+    std::ranges::rotate(
+        spectrum_,
+        spectrum_.begin( ) + static_cast< std::ptrdiff_t >( spectrum_.size( ) / 2UZ )
+    );
+
+    output.resize( spectrum_.size( ) );
+    std::ranges::transform( spectrum_, output.begin( ), ToDecibels{ window_sum_ } );
+}
+
+auto SpectrumAnalyzer::power_spectrum_db(
+    std::span< float32 const > samples,
+    std::vector< float32 >&    output
+) -> void
+{
+    this->windowed_fft( samples );
 
     // A real sine splits its power between the positive and negative frequencies.
-    auto const positive = std::span( spectrum ).first( spectrum.size( ) / 2UZ + 1UZ );
+    auto const positive = std::span( spectrum_ ).first( spectrum_.size( ) / 2UZ + 1UZ );
     output.resize( positive.size( ) );
-    std::ranges::transform( positive, output.begin( ), ToDecibels{ 0.5F * window_sum } );
+    std::ranges::transform( positive, output.begin( ), ToDecibels{ 0.5F * window_sum_ } );
+}
+
+template < typename Sample >
+auto SpectrumAnalyzer::windowed_fft( std::span< Sample const > samples ) -> void
+{
+    auto const size = samples.size( );
+    if ( window_.size( ) != size )
+    {
+        window_     = std::views::iota( 0UZ, size )
+                    | std::views::transform( std::bind_back( hann, size ) )
+                    | std::ranges::to< std::vector >( );
+        window_sum_ = std::reduce( window_.begin( ), window_.end( ), 0.0F );
+    }
+
+    spectrum_.resize( size );
+    std::ranges::transform( samples, window_, spectrum_.begin( ), ApplyWindow< Sample >{ } );
+    fft( spectrum_ );
 }
 
 } // namespace ltb::radio::dsp
