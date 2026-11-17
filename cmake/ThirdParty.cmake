@@ -7,18 +7,30 @@ find_package(Git REQUIRED)
 # Graphics API
 find_package( Vulkan REQUIRED )
 
-execute_process(
-  COMMAND ${GIT_EXECUTABLE} rev-parse HEAD:ltb-vlk
-  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-  OUTPUT_VARIABLE LTB_VLK_COMMIT_HASH
-  RESULT_VARIABLE GIT_RESULT
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+# ltb-vlk is a git submodule. When it is checked out, build against the local
+# copy so changes made there are picked up immediately. Otherwise download the
+# commit the submodule pins.
+if ( NOT DEFINED CPM_LtbVlk_SOURCE AND EXISTS ${PROJECT_SOURCE_DIR}/ltb-vlk/CMakeLists.txt )
+  set( CPM_LtbVlk_SOURCE ${PROJECT_SOURCE_DIR}/ltb-vlk )
+endif ()
 
-if (GIT_RESULT EQUAL 0)
-  message(STATUS "ltb-vlk commit hash: ${LTB_VLK_COMMIT_HASH}")
-else()
-  message(FATAL_ERROR "Failed to get ltb-vlk commit hash.")
+if ( DEFINED CPM_LtbVlk_SOURCE )
+  message( STATUS "ltb-vlk source: ${CPM_LtbVlk_SOURCE}" )
+  set( LTB_VLK_COMMIT_HASH "local" )
+else ()
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} rev-parse HEAD:ltb-vlk
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    OUTPUT_VARIABLE LTB_VLK_COMMIT_HASH
+    RESULT_VARIABLE GIT_RESULT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+
+  if ( GIT_RESULT EQUAL 0 )
+    message( STATUS "ltb-vlk commit hash: ${LTB_VLK_COMMIT_HASH}" )
+  else ()
+    message( FATAL_ERROR "Failed to get ltb-vlk commit hash." )
+  endif ()
 endif ()
 
 cpmaddpackage(

@@ -14,7 +14,8 @@
 #include <filesystem>
 #include <optional>
 
-auto main( ltb::int32 const argc, char const* argv[] ) -> int
+// `argc` is only used by an assert, which release builds remove.
+auto main( [[maybe_unused]] ltb::int32 const argc, char const* argv[] ) -> int
 {
     using namespace ltb;
     assert( argc > 0 );

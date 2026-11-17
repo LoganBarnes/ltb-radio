@@ -103,7 +103,8 @@ Other dependencies (ImGui, GLFW, libhackrf, miniaudio, GoogleTest, and
 ### Build and run
 
 No submodules needed. CMake downloads ltb-vlk at the commit the `ltb-vlk` submodule pins, so
-clone with git (not a zip download) so that commit can be looked up.
+clone with git (not a zip download) so that commit can be looked up. (If the submodule is checked
+out, that local copy is used instead; see [Editing ltb-vlk](#editing-ltb-vlk).)
 
 ```sh
 git clone https://github.com/LoganBarnes/ltb-radio.git
@@ -134,12 +135,15 @@ directories.
 #### Editing ltb-vlk
 
 Only needed when changing [ltb-vlk](https://github.com/LoganBarnes/ltb-vlk) itself. Check out the
-submodule and point CPM at it instead of the downloaded copy:
+submodule and re-run CMake. When `ltb-vlk/` is checked out, it is built instead of the downloaded
+copy, so edits there are picked up immediately:
 
 ```sh
 git submodule update --init
-cmake -S . -B build -DCPM_LtbVlk_SOURCE=$PWD/ltb-vlk
+cmake -S . -B build
 ```
+
+To use a copy somewhere else, set `-DCPM_LtbVlk_SOURCE=<path>`.
 
 Everyone else builds the commit the submodule pins, downloaded from GitHub. So push ltb-vlk
 changes before committing the updated submodule in this repo, or other builds will fail to find
